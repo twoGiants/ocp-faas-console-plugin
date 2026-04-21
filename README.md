@@ -4,6 +4,8 @@ A Functions-as-a-Service PoC UI for the OpenShift Web Console. Developers create
 
 Built as an [OpenShift Console dynamic plugin](https://github.com/openshift/console/tree/main/frontend/packages/console-dynamic-plugin-sdk) using React, TypeScript, and PatternFly 6.
 
+**[Deploy to your cluster](https://twogiants.github.io/func-console/)**
+
 ## Deployment on cluster
 
 ### Prerequisites

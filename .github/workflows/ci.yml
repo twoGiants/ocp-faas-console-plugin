@@ -143,13 +143,14 @@ jobs:
       - name: Setup Helm
         uses: azure/setup-helm@v5
 
-      - name: Generate deployment YAML
+      - name: Generate deployment YAML and landing page
         run: |
           mkdir public
           helm template console-functions-plugin charts/openshift-console-plugin \
             -n console-functions-plugin \
             --set "plugin.image=${{ env.IMAGE }}@${{ needs.publish.outputs.digest }}" \
             > public/plugin.yaml
+          cp pages/index.html public/index.html
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5
