@@ -18,7 +18,7 @@ Completed:
 - Added hack/next-plan-number.sh for deterministic plan/branch numbering based on remote PR count
 - Updated WORKFLOW.md branching convention to use the helper script
 - 8 suites, 34 tests, all passing, zero lint errors
-Left off: PR #10 open. User needs to enable GITHUB_TOKEN write permissions in repo Settings and add branch protection rule for master.
+Left off: PR #10 merged. Pipeline runs successfully on master. GitHub Pages deployed. Branch protection rule set.
 Blockers: None
 
 ---
