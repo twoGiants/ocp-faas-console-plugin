@@ -23,6 +23,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom-v5-compat';
 import { FileTreeView } from '../components/FileTreeView';
 import { UserAvatar } from '../components/UserAvatar';
+import { ForgeConnectionProvider } from '../context/ForgeConnectionProvider';
 import { SourceControlService } from '../services/source-control/SourceControlService';
 import { useSourceControlService } from '../services/source-control/useSourceControlService';
 import { FileEntry, RepoMetadata } from '../services/types';
@@ -31,6 +32,14 @@ import { getLanguageFromPath, handlerMap, parseNamespaceAndRuntime } from '../ut
 // --- page component ---
 
 export default function FunctionEditPage() {
+  return (
+    <ForgeConnectionProvider>
+      <FunctionEditPageContent />
+    </ForgeConnectionProvider>
+  );
+}
+
+function FunctionEditPageContent() {
   const { t } = useTranslation('plugin__console-functions-plugin');
   const state = useFunctionEditPage();
 

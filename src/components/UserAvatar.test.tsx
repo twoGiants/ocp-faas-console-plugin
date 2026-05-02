@@ -20,7 +20,7 @@ const testUser = { name: 'twoGiants' };
 
 function renderWithContext(
   ui: ReactNode,
-  contextValue = { isActive: false, connectToForge: vi.fn() },
+  contextValue = { isActive: false, user: testUser, connectToForge: vi.fn() },
 ) {
   return render(
     <ForgeConnectionContext.Provider value={contextValue}>{ui}</ForgeConnectionContext.Provider>,
@@ -117,7 +117,11 @@ describe('UserAvatar', () => {
       const connectToForge = vi.fn();
       mockFetchUserInfo.mockResolvedValue(testUser);
 
-      renderWithContext(<UserAvatar enableReconnect />, { isActive: false, connectToForge });
+      renderWithContext(<UserAvatar enableReconnect />, {
+        isActive: false,
+        user: testUser,
+        connectToForge,
+      });
 
       await user.type(screen.getByLabelText('Personal Access Token'), 'ghp_valid');
       await user.click(screen.getByRole('button', { name: 'Connect' }));

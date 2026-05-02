@@ -14,6 +14,7 @@
   "Edit": "Edit",
   "Enter your GitHub Personal Access Token to connect your repositories.": "Enter your GitHub Personal Access Token to connect your repositories.",
   "Edit function": "Edit function",
+  "Error listing functions": "Error listing functions",
   "Error creating function": "Error creating function",
   "Function Settings": "Function Settings",
   "FaaS": "FaaS",

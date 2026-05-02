@@ -4,7 +4,7 @@ A Functions-as-a-Service PoC UI for the OpenShift Web Console. Developers create
 
 Built as an [OpenShift Console dynamic plugin](https://github.com/openshift/console/tree/main/frontend/packages/console-dynamic-plugin-sdk) using React, TypeScript, and PatternFly 6.
 
-**[Deploy to your cluster](https://twogiants.github.io/func-console/)**
+Check out the **[Github page](https://twogiants.github.io/func-console/)** for a quick start or read ahead.
 
 ## Deployment on cluster
 
@@ -12,6 +12,7 @@ Built as an [OpenShift Console dynamic plugin](https://github.com/openshift/cons
 
 - [oc](https://console.redhat.com/openshift/downloads) CLI
 - An [OpenShift 4.19 cluster](https://console.redhat.com/openshift/create)
+- Github [*Personal Access Token*](https://github.com/settings/personal-access-tokens) with *administration*, *content* and *workflow* write permissions in all repositories
 
 ### Quick install
 
@@ -46,6 +47,7 @@ Available image tags are listed in the [container registry](https://github.com/t
 - [oc](https://console.redhat.com/openshift/downloads) CLI
 - [Docker](https://www.docker.com) or [podman 3.2.0+](https://podman.io)
 - An [OpenShift cluster](https://console.redhat.com/openshift/create)
+- Github [*Personal Access Token*](https://github.com/settings/personal-access-tokens) with *administration*, *content* and *workflow* write permissions in all repositories
 
 ### Option 1: Local
 

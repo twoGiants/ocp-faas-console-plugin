@@ -125,7 +125,25 @@
       "If the GH PAT is not set in the session then the Create button is inactive/disabled.",
       "The GH PAT must not be compiled/hardcode into code at compile time."
     ],
-    "passes": false
+    "passes": true
+  },
+  {
+    "category": "functional",
+    "description": "Function Edit Page with TreeView file browser and CodeEditor for editing and deploying function code",
+    "steps": [
+      "SourceControlService extended with fetch(repo) and updateRepo(repo) methods. fetch retrieves full repo tree via git.getTree recursive + blob fetches. updateRepo commits on existing branches with local commit SHA cache for GitHub's eventual consistency",
+      "Navigate to /faas/edit/:name loads files from GitHub via listFunctionRepos + fetch (each page loads its own data from URL params)",
+      "Page layout: toolbar at top (Back link left, success/danger Alert center, Save & Deploy button right), FileTreeView fixed-width left panel (16rem, horizontally scrollable), SDK CodeEditor fills remaining width (70vh height)",
+      "FileTreeView builds nested tree from flat FileEntry[] paths with loading spinner state, empty placeholder state, directories expand/collapse only, files are selectable and update CodeEditor content",
+      "SDK CodeEditor with empty state (code icon + 'Start editing' message) when no file selected, language label visible in header",
+      "CodeEditor language auto-detected from file extension via getLanguageFromPath utility",
+      "Handler file auto-selected on load based on runtime from func.yaml (no fallback selection if handler not found)",
+      "Modified files indicated in tree with dot indicator after filename, dirty state derived by comparing working content against original per file on every onChange",
+      "Save & Deploy button pushes all files to GitHub via updateRepo, resets dirty state on success, shows spinner and disables button during push, shows success alert with auto-dismiss after 2 seconds",
+      "Back to Functions link navigates to /faas directly if clean, shows unsaved changes confirmation modal if dirty",
+      "Empty tree with 'No files' placeholder and disabled Save & Deploy when repo not found, back link always visible"
+    ],
+    "passes": true
   },
   {
     "category": "functional",
@@ -149,23 +167,5 @@
       "GH Actions workflow can authenticate to the cluster and run func deploy"
     ],
     "passes": false
-  },
-  {
-    "category": "functional",
-    "description": "Function Edit Page with TreeView file browser and CodeEditor for editing and deploying function code",
-    "steps": [
-      "SourceControlService extended with fetch(repo) and updateRepo(repo) methods. fetch retrieves full repo tree via git.getTree recursive + blob fetches. updateRepo commits on existing branches with local commit SHA cache for GitHub's eventual consistency",
-      "Navigate to /faas/edit/:name loads files from GitHub via listFunctionRepos + fetch (each page loads its own data from URL params)",
-      "Page layout: toolbar at top (Back link left, success/danger Alert center, Save & Deploy button right), FileTreeView fixed-width left panel (16rem, horizontally scrollable), SDK CodeEditor fills remaining width (70vh height)",
-      "FileTreeView builds nested tree from flat FileEntry[] paths with loading spinner state, empty placeholder state, directories expand/collapse only, files are selectable and update CodeEditor content",
-      "SDK CodeEditor with empty state (code icon + 'Start editing' message) when no file selected, language label visible in header",
-      "CodeEditor language auto-detected from file extension via getLanguageFromPath utility",
-      "Handler file auto-selected on load based on runtime from func.yaml (no fallback selection if handler not found)",
-      "Modified files indicated in tree with dot indicator after filename, dirty state derived by comparing working content against original per file on every onChange",
-      "Save & Deploy button pushes all files to GitHub via updateRepo, resets dirty state on success, shows spinner and disables button during push, shows success alert with auto-dismiss after 2 seconds",
-      "Back to Functions link navigates to /faas directly if clean, shows unsaved changes confirmation modal if dirty",
-      "Empty tree with 'No files' placeholder and disabled Save & Deploy when repo not found, back link always visible"
-    ],
-    "passes": true
   }
 ]

@@ -1,19 +1,30 @@
-import { useState } from 'react';
 import { DocumentTitle, ListPageHeader } from '@openshift-console/dynamic-plugin-sdk';
 import { Alert, PageSection } from '@patternfly/react-core';
+import { useContext, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom-v5-compat';
 import { CreateFunctionForm, CreateFunctionFormData } from '../components/CreateFunctionForm';
+import { UserAvatar } from '../components/UserAvatar';
+import {
+  ForgeConnectionContext,
+  ForgeConnectionProvider,
+} from '../context/ForgeConnectionProvider';
 import { useFunctionService } from '../services/function/useFunctionService';
 import { useSourceControlService } from '../services/source-control/useSourceControlService';
-import { UserAvatar } from '../components/UserAvatar';
-import { PAT_KEY } from '../services/types';
 import { errorMessage } from '../utils/utils';
 
 export default function FunctionCreatePage() {
+  return (
+    <ForgeConnectionProvider>
+      <FunctionCreatePageContent />
+    </ForgeConnectionProvider>
+  );
+}
+
+function FunctionCreatePageContent() {
   const { t } = useTranslation('plugin__console-functions-plugin');
-  const isConnected = !!sessionStorage.getItem(PAT_KEY);
-  const { isSubmitting, error, handleSubmit, handleCancel } = useFunctionCreatePage();
+  const { isSubmitting, error, handleSubmit, handleCancel, isConnectedToForge } =
+    useFunctionCreatePage();
 
   return (
     <>
@@ -22,7 +33,7 @@ export default function FunctionCreatePage() {
         <UserAvatar enableReconnect={false} />
       </ListPageHeader>
       <PageSection>
-        {!isConnected && (
+        {!isConnectedToForge && (
           <Alert
             variant="warning"
             title={t(
@@ -36,7 +47,7 @@ export default function FunctionCreatePage() {
             {error}
           </Alert>
         )}
-        {isConnected && (
+        {isConnectedToForge && (
           <CreateFunctionForm
             onSubmit={handleSubmit}
             onCancel={handleCancel}
@@ -48,8 +59,15 @@ export default function FunctionCreatePage() {
   );
 }
 
-function useFunctionCreatePage() {
+function useFunctionCreatePage(): {
+  isSubmitting: boolean;
+  error: string | null;
+  handleSubmit: (data: CreateFunctionFormData) => Promise<void>;
+  handleCancel: () => void;
+  isConnectedToForge: boolean;
+} {
   const navigate = useNavigate();
+  const isConnectedToForge = useContext(ForgeConnectionContext).isActive;
   const functionService = useFunctionService();
   const sourceControl = useSourceControlService();
 
@@ -69,7 +87,7 @@ function useFunctionCreatePage() {
         branch: data.branch,
       });
 
-      await sourceControl.push(
+      await sourceControl.createRepo(
         { owner: data.owner, name: data.repo, url: '', defaultBranch: data.branch },
         files,
         'Initialize Knative function project',
@@ -87,5 +105,5 @@ function useFunctionCreatePage() {
     navigate('/faas');
   };
 
-  return { isSubmitting, error, handleSubmit, handleCancel };
+  return { isSubmitting, error, handleSubmit, handleCancel, isConnectedToForge };
 }

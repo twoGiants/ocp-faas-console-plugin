@@ -155,6 +155,23 @@ describe('FunctionsListPage', () => {
     expect(await screen.findByText('orphan-func')).toBeInTheDocument();
   });
 
+  it('shows error alert when listing repos fails', async () => {
+    renderAuthenticated();
+    mockUseSourceControl.mockReturnValue({
+      listFunctionRepos: vi.fn().mockRejectedValue(new Error('Bad credentials')),
+      fetchFileContent: vi.fn(),
+    });
+    mockUseClusterService.mockReturnValue({ deployments: [], loaded: true, error: null });
+
+    render(
+      <MemoryRouter>
+        <FunctionsListPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('Bad credentials')).toBeInTheDocument();
+  });
+
   it('renders empty state when GitHub API fails', async () => {
     renderAuthenticated();
     mockUseSourceControl.mockReturnValue({

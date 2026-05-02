@@ -1,23 +1,30 @@
 import {
   DocumentTitle,
-  ListPageHeader,
   K8sResourceKind,
+  ListPageHeader,
 } from '@openshift-console/dynamic-plugin-sdk';
-import { Button, Content, ContentVariants, PageSection, Spinner } from '@patternfly/react-core';
-import { Link, useNavigate } from 'react-router-dom-v5-compat';
+import {
+  Alert,
+  Button,
+  Content,
+  ContentVariants,
+  PageSection,
+  Spinner,
+} from '@patternfly/react-core';
+import { useContext, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useEffect, useState, useMemo, useContext } from 'react';
+import { Link, useNavigate } from 'react-router-dom-v5-compat';
 import { FunctionsEmptyState } from '../components/EmptyState';
 import { FunctionStatus, FunctionTable, FunctionTableItem } from '../components/FunctionTable';
-import { useSourceControlService } from '../services/source-control/useSourceControlService';
-import { useClusterService } from '../services/cluster/useClusterService';
-import {
-  ForgeConnectionProvider,
-  ForgeConnectionContext,
-} from '../context/ForgeConnectionProvider';
 import { UserAvatar } from '../components/UserAvatar';
+import {
+  ForgeConnectionContext,
+  ForgeConnectionProvider,
+} from '../context/ForgeConnectionProvider';
+import { useClusterService } from '../services/cluster/useClusterService';
+import { useSourceControlService } from '../services/source-control/useSourceControlService';
 import { RepoMetadata } from '../services/types';
-import { parseNamespaceAndRuntime } from '../utils/utils';
+import { errorMessage, parseNamespaceAndRuntime } from '../utils/utils';
 
 export default function FunctionsListPage() {
   return (
@@ -29,7 +36,7 @@ export default function FunctionsListPage() {
 
 function FunctionsListPageContent() {
   const { t } = useTranslation('plugin__console-functions-plugin');
-  const { functions, loaded, onEdit, isConnectedToForge } = useFunctionListPage();
+  const { functions, loaded, onEdit, isConnectedToForge, error } = useFunctionListPage();
 
   return (
     <>
@@ -38,6 +45,11 @@ function FunctionsListPageContent() {
         <UserAvatar enableReconnect />
       </ListPageHeader>
       <PageSection>
+        {error && (
+          <Alert variant="danger" title={t('Error listing functions')} isInline>
+            {error}
+          </Alert>
+        )}
         {!loaded && (
           <Spinner aria-label={t('Loading')} style={{ display: 'block', margin: '4rem auto' }} />
         )}
@@ -78,6 +90,7 @@ function useFunctionListPage(): {
   loaded: boolean;
   onEdit: (name: string) => void;
   isConnectedToForge: boolean;
+  error: string;
 } {
   const isConnectedToForge = useContext(ForgeConnectionContext).isActive;
   const sourceControl = useSourceControlService();
@@ -88,9 +101,12 @@ function useFunctionListPage(): {
   const [reposLoaded, setReposLoaded] = useState(!isConnectedToForge);
   const [wasConnectedToForge, setWasConnectedToForge] = useState(isConnectedToForge);
 
+  const [error, setError] = useState<string>('');
+
   // Reset state when authentication status changes (render-time adjustment)
   if (isConnectedToForge !== wasConnectedToForge) {
     setWasConnectedToForge(isConnectedToForge);
+    setError('');
     if (isConnectedToForge) {
       setReposLoaded(false);
     } else {
@@ -116,14 +132,18 @@ function useFunctionListPage(): {
             return newItem(repo.name, namespace, runtime);
           }),
         );
-      } catch {
-        if (!ignore) setReposLoaded(true);
+      } catch (err) {
+        if (!ignore) {
+          setReposLoaded(true);
+          setError(errorMessage(err));
+        }
         return;
       }
       if (ignore) return;
 
       setFunctionItems(items);
       setReposLoaded(true);
+      setError('');
     }
 
     loadFunctionTableItems();
@@ -146,7 +166,7 @@ function useFunctionListPage(): {
   const loaded = reposLoaded && clusterLoaded;
 
   const onEdit = (name: string) => navigate(`/faas/edit/${name}`);
-  return { functions, loaded, onEdit, isConnectedToForge };
+  return { functions, loaded, onEdit, isConnectedToForge, error };
 }
 
 function newItem(repoName: string, namespace: string, runtime: string): FunctionTableItem {

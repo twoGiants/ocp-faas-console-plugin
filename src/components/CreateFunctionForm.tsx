@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useContext, useState } from 'react';
 import {
   ActionGroup,
   Button,
@@ -11,6 +11,9 @@ import {
 } from '@patternfly/react-core';
 import { useTranslation } from 'react-i18next';
 import { FunctionRuntime } from '../services/types';
+import { ForgeConnectionContext } from '../context/ForgeConnectionProvider';
+
+const OCP_INTERNAL_REGISTRY = 'image-registry.openshift-image-registry.svc:5000/';
 
 const runtimeOptions = [
   { value: 'node', label: 'Node.js' },
@@ -48,12 +51,7 @@ export function CreateFunctionForm({ onSubmit, onCancel, isSubmitting }: CreateF
     >
       <FormSection title={t('GitHub Settings')}>
         <FormGroup label={t('Owner')} isRequired fieldId="owner">
-          <TextInput
-            id="owner"
-            isRequired
-            value={fields.owner}
-            onChange={(_, val) => setField('owner', val)}
-          />
+          <TextInput id="owner" isRequired isDisabled value={fields.owner} />
         </FormGroup>
         <FormGroup label={t('Repository')} isRequired fieldId="repo">
           <TextInput
@@ -94,12 +92,7 @@ export function CreateFunctionForm({ onSubmit, onCancel, isSubmitting }: CreateF
           </FormSelect>
         </FormGroup>
         <FormGroup label={t('Registry')} isRequired fieldId="registry">
-          <TextInput
-            id="registry"
-            isRequired
-            value={fields.registry}
-            onChange={(_, val) => setField('registry', val)}
-          />
+          <TextInput id="registry" isRequired isDisabled value={fields.registry} />
         </FormGroup>
         <FormGroup label={t('Namespace')} isRequired fieldId="namespace">
           <TextInput
@@ -127,18 +120,17 @@ export function CreateFunctionForm({ onSubmit, onCancel, isSubmitting }: CreateF
   );
 }
 
-const initialFields: CreateFunctionFormData = {
-  owner: '',
-  repo: '',
-  branch: '',
-  name: '',
-  runtime: 'node',
-  registry: '',
-  namespace: '',
-};
-
 function useCreateFunctionForm() {
-  const [fields, setFields] = useState<CreateFunctionFormData>(initialFields);
+  const { user } = useContext(ForgeConnectionContext);
+  const [fields, setFields] = useState<CreateFunctionFormData>({
+    owner: user?.name ?? '',
+    repo: '',
+    branch: '',
+    name: '',
+    runtime: 'node',
+    registry: OCP_INTERNAL_REGISTRY,
+    namespace: '',
+  });
 
   const setField = (key: keyof CreateFunctionFormData, value: string) => {
     setFields((prev) => ({ ...prev, [key]: value }));

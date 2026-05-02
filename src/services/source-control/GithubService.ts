@@ -42,8 +42,30 @@ export class GithubService implements SourceControlService {
     }));
   }
 
-  async push(repo: RepoMetadata, files: FileEntry[], message: string): Promise<void> {
-    const { owner, name: repoName, defaultBranch: branch } = repo;
+  async createRepo(repo: RepoMetadata, files: FileEntry[], message: string): Promise<void> {
+    const { owner, name: repoName, defaultBranch } = repo;
+
+    if (await this.#doesRepoExist(owner, repoName))
+      throw new Error(`repository '${repoName}' exists, please chose a different name`);
+
+    await this.octokit.repos.createForAuthenticatedUser({
+      name: repoName,
+      auto_init: true,
+    });
+
+    if (defaultBranch !== 'main')
+      await this.octokit.repos.renameBranch({
+        owner,
+        repo: repoName,
+        branch: 'main',
+        new_name: defaultBranch,
+      });
+
+    await this.octokit.repos.replaceAllTopics({
+      owner,
+      repo: repoName,
+      names: ['serverless-function'],
+    });
 
     const treeEntries = await Promise.all(
       files.map(async (file) => {
@@ -62,10 +84,23 @@ export class GithubService implements SourceControlService {
       }),
     );
 
+    const { data: ref } = await this.octokit.git.getRef({
+      owner,
+      repo: repoName,
+      ref: `heads/${defaultBranch}`,
+    });
+
+    const { data: parentCommit } = await this.octokit.git.getCommit({
+      owner,
+      repo: repoName,
+      commit_sha: ref.object.sha,
+    });
+
     const { data: tree } = await this.octokit.git.createTree({
       owner,
       repo: repoName,
       tree: treeEntries,
+      base_tree: parentCommit.tree.sha,
     });
 
     const { data: commit } = await this.octokit.git.createCommit({
@@ -73,15 +108,27 @@ export class GithubService implements SourceControlService {
       repo: repoName,
       message,
       tree: tree.sha,
-      parents: [],
+      parents: [parentCommit.sha],
     });
 
-    await this.octokit.git.createRef({
+    await this.octokit.git.updateRef({
       owner,
       repo: repoName,
-      ref: `refs/heads/${branch}`,
+      ref: `heads/${defaultBranch}`,
       sha: commit.sha,
     });
+  }
+
+  async #doesRepoExist(owner: string, repoName: string): Promise<boolean> {
+    try {
+      await this.octokit.repos.get({ owner, repo: repoName });
+      return true;
+    } catch (err) {
+      const is404 =
+        err instanceof Error && 'status' in err && (err as { status: number }).status === 404;
+      if (is404) return false;
+      throw err;
+    }
   }
 
   async updateRepo(repo: RepoMetadata, files: FileEntry[], message: string): Promise<void> {

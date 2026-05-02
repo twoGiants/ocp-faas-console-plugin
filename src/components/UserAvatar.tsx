@@ -58,7 +58,7 @@ function useUserAvatar(enableReconnect: boolean) {
     sessionStorage.setItem(USER_KEY, JSON.stringify(forgeUser));
     setUser(forgeUser);
     setIsModalOpen(false);
-    connectToForge();
+    connectToForge(forgeUser);
   };
 
   const openModal = () => setIsModalOpen(true);

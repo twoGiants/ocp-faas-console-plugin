@@ -2,10 +2,10 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import FunctionCreatePage from './FunctionCreatePage';
-import { PAT_KEY } from '../services/types';
+import { PAT_KEY, USER_KEY } from '../services/types';
 
 const mockGenerateFunction = vi.fn();
-const mockPush = vi.fn();
+const mockCreateRepo = vi.fn();
 const mockNavigate = vi.fn();
 
 vi.mock('react-i18next', () => ({
@@ -28,7 +28,7 @@ vi.mock('../services/function/useFunctionService', () => ({
 
 vi.mock('../services/source-control/useSourceControlService', () => ({
   useSourceControlService: () => ({
-    push: mockPush,
+    createRepo: mockCreateRepo,
     listFunctionRepos: vi.fn(),
     fetchFileContent: vi.fn(),
   }),
@@ -56,12 +56,17 @@ afterAll(() => {
   sessionStorage.clear();
 });
 
+const renderPage = () =>
+  render(
+    <MemoryRouter>
+      <FunctionCreatePage />
+    </MemoryRouter>,
+  );
+
 const fillForm = async (user: ReturnType<typeof userEvent.setup>) => {
-  await user.type(screen.getByRole('textbox', { name: /Owner/ }), 'testuser');
   await user.type(screen.getByRole('textbox', { name: /Repository/ }), 'my-repo');
   await user.type(screen.getByRole('textbox', { name: /Branch/ }), 'main');
   await user.type(screen.getByRole('textbox', { name: /^Name$/ }), 'my-func');
-  await user.type(screen.getByRole('textbox', { name: /Registry/ }), 'quay.io/test');
   await user.type(screen.getByRole('textbox', { name: /Namespace/ }), 'default');
 };
 
@@ -69,28 +74,21 @@ describe('FunctionCreatePage', () => {
   it('renders CreateFunctionForm', () => {
     sessionStorage.setItem(PAT_KEY, 'ghp_test');
 
-    render(
-      <MemoryRouter>
-        <FunctionCreatePage />
-      </MemoryRouter>,
-    );
+    renderPage();
 
     expect(screen.getByRole('textbox', { name: /Owner/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Create/ })).toBeInTheDocument();
   });
 
-  it('calls generateFunction then push on submit, and navigates on success', async () => {
+  it('calls generateFunction then createRepo on submit, and navigates on success', async () => {
     sessionStorage.setItem(PAT_KEY, 'ghp_test');
+    sessionStorage.setItem(USER_KEY, JSON.stringify({ name: 'testuser' }));
     const user = userEvent.setup();
     const files = [{ path: 'func.yaml', mode: '100644', content: 'name: f', type: 'blob' }];
     mockGenerateFunction.mockResolvedValue(files);
-    mockPush.mockResolvedValue(undefined);
+    mockCreateRepo.mockResolvedValue(undefined);
 
-    render(
-      <MemoryRouter>
-        <FunctionCreatePage />
-      </MemoryRouter>,
-    );
+    renderPage();
 
     await fillForm(user);
     await user.click(screen.getByRole('button', { name: /Create/ }));
@@ -99,14 +97,14 @@ describe('FunctionCreatePage', () => {
       expect(mockGenerateFunction).toHaveBeenCalledWith({
         name: 'my-func',
         runtime: 'node',
-        registry: 'quay.io/test',
+        registry: 'image-registry.openshift-image-registry.svc:5000/',
         namespace: 'default',
         branch: 'main',
       });
     });
 
     await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith(
+      expect(mockCreateRepo).toHaveBeenCalledWith(
         { owner: 'testuser', name: 'my-repo', url: '', defaultBranch: 'main' },
         files,
         'Initialize Knative function project',
@@ -120,14 +118,11 @@ describe('FunctionCreatePage', () => {
 
   it('shows an alert on error', async () => {
     sessionStorage.setItem(PAT_KEY, 'ghp_test');
+    sessionStorage.setItem(USER_KEY, JSON.stringify({ name: 'testuser' }));
     const user = userEvent.setup();
     mockGenerateFunction.mockRejectedValue(new Error('Backend error'));
 
-    render(
-      <MemoryRouter>
-        <FunctionCreatePage />
-      </MemoryRouter>,
-    );
+    renderPage();
 
     await fillForm(user);
     await user.click(screen.getByRole('button', { name: /Create/ }));
@@ -138,21 +133,13 @@ describe('FunctionCreatePage', () => {
   });
 
   it('renders UserAvatar in header', () => {
-    render(
-      <MemoryRouter>
-        <FunctionCreatePage />
-      </MemoryRouter>,
-    );
+    renderPage();
 
     expect(screen.getByTestId('user-avatar')).toBeInTheDocument();
   });
 
   it('shows warning and hides form when no PAT is set', () => {
-    render(
-      <MemoryRouter>
-        <FunctionCreatePage />
-      </MemoryRouter>,
-    );
+    renderPage();
 
     expect(
       screen.getByText(/A GitHub Personal Access Token is required to create functions/),
