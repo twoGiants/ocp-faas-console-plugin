@@ -37,6 +37,7 @@ vi.mock('../services/source-control/useSourceControlService', () => ({
 
 vi.mock('../services/cluster/useClusterService', () => ({
   useClusterService: () => ({
+    knativeServices: [],
     deployments: [],
     loaded: true,
     error: undefined,

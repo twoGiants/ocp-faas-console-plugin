@@ -24,12 +24,23 @@ vi.mock('../services/source-control/useSourceControlService', () => ({
 
 const mockUseClusterService = vi.fn();
 vi.mock('../services/cluster/useClusterService', () => ({
-  useClusterService: () => mockUseClusterService(),
+  useClusterService: (...args: unknown[]) => mockUseClusterService(...args),
 }));
 
 vi.mock('../components/FunctionTable', () => ({
-  FunctionTable: ({ functions }: { functions: { name: string }[] }) =>
-    functions.map((f) => f.name).join(','),
+  FunctionTable: ({
+    functions,
+  }: {
+    functions: { name: string; status: string; replicas: number; url?: string }[];
+  }) =>
+    functions.map((f) => (
+      <div key={f.name}>
+        <span data-testid="fn-name">{f.name}</span>
+        <span data-testid="fn-status">{f.status}</span>
+        <span data-testid="fn-replicas">{f.replicas}</span>
+        <span data-testid="fn-url">{f.url ?? ''}</span>
+      </div>
+    )),
 }));
 
 vi.mock('../components/UserAvatar', () => ({
@@ -38,8 +49,68 @@ vi.mock('../components/UserAvatar', () => ({
   ),
 }));
 
+function clusterData(
+  overrides: Partial<{
+    knativeServices: unknown[];
+    deployments: unknown[];
+    loaded: boolean;
+    error: unknown;
+  }> = {},
+) {
+  return {
+    knativeServices: [],
+    deployments: [],
+    loaded: true,
+    error: null,
+    ...overrides,
+  };
+}
+
 function renderAuthenticated() {
   sessionStorage.setItem(PAT_KEY, 'ghp_test');
+}
+
+function repoFixture(name: string) {
+  return {
+    owner: 'twoGiants',
+    name,
+    url: `https://github.com/twoGiants/${name}`,
+    defaultBranch: 'main',
+  };
+}
+
+function ksvcFixture(
+  name: string,
+  readyStatus: string,
+  url = `https://${name}-demo.apps.example.com`,
+) {
+  return {
+    apiVersion: 'serving.knative.dev/v1',
+    kind: 'Service',
+    metadata: {
+      name,
+      namespace: 'demo',
+      labels: { 'function.knative.dev/name': name },
+    },
+    status: {
+      url,
+      conditions: [{ type: 'Ready', status: readyStatus }],
+    },
+  };
+}
+
+function deploymentFixture(name: string, specReplicas: number, readyReplicas: number) {
+  return {
+    apiVersion: 'apps/v1',
+    kind: 'Deployment',
+    metadata: {
+      name: `${name}-00001-deployment`,
+      namespace: 'demo',
+      labels: { 'function.knative.dev/name': name },
+    },
+    spec: { replicas: specReplicas },
+    status: { readyReplicas },
+  };
 }
 
 describe('FunctionsListPage', () => {
@@ -61,7 +132,7 @@ describe('FunctionsListPage', () => {
       listFunctionRepos: vi.fn().mockResolvedValue([]),
       fetchFileContent: vi.fn(),
     });
-    mockUseClusterService.mockReturnValue({ deployments: [], loaded: false, error: null });
+    mockUseClusterService.mockReturnValue(clusterData({ loaded: false }));
 
     render(
       <MemoryRouter>
@@ -78,7 +149,7 @@ describe('FunctionsListPage', () => {
       listFunctionRepos: vi.fn().mockResolvedValue([]),
       fetchFileContent: vi.fn(),
     });
-    mockUseClusterService.mockReturnValue({ deployments: [], loaded: true, error: null });
+    mockUseClusterService.mockReturnValue(clusterData());
 
     render(
       <MemoryRouter>
@@ -92,33 +163,15 @@ describe('FunctionsListPage', () => {
   it('renders table when functions are loaded', async () => {
     renderAuthenticated();
     mockUseSourceControl.mockReturnValue({
-      listFunctionRepos: vi.fn().mockResolvedValue([
-        {
-          owner: 'twoGiants',
-          name: 'my-func',
-          url: 'https://github.com/twoGiants/my-func',
-          defaultBranch: 'main',
-        },
-      ]),
+      listFunctionRepos: vi.fn().mockResolvedValue([repoFixture('my-func')]),
       fetchFileContent: vi.fn().mockResolvedValue('name: my-func\nruntime: go\nnamespace: demo\n'),
     });
-    mockUseClusterService.mockReturnValue({
-      deployments: [
-        {
-          apiVersion: 'apps/v1',
-          kind: 'Deployment',
-          metadata: {
-            name: 'my-func',
-            namespace: 'demo',
-            labels: { 'function.knative.dev/name': 'my-func' },
-          },
-          spec: { replicas: 1 },
-          status: { readyReplicas: 1 },
-        },
-      ],
-      loaded: true,
-      error: null,
-    });
+    mockUseClusterService.mockReturnValue(
+      clusterData({
+        knativeServices: [ksvcFixture('my-func', 'True')],
+        deployments: [deploymentFixture('my-func', 1, 1)],
+      }),
+    );
 
     render(
       <MemoryRouter>
@@ -126,25 +179,18 @@ describe('FunctionsListPage', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText('my-func')).toBeInTheDocument();
+    expect(await screen.findByTestId('fn-name')).toHaveTextContent('my-func');
   });
 
   it('shows NotDeployed status for repos without cluster deployment', async () => {
     renderAuthenticated();
     mockUseSourceControl.mockReturnValue({
-      listFunctionRepos: vi.fn().mockResolvedValue([
-        {
-          owner: 'twoGiants',
-          name: 'orphan-func',
-          url: 'https://github.com/twoGiants/orphan-func',
-          defaultBranch: 'main',
-        },
-      ]),
+      listFunctionRepos: vi.fn().mockResolvedValue([repoFixture('orphan-func')]),
       fetchFileContent: vi
         .fn()
         .mockResolvedValue('name: orphan-func\nruntime: node\nnamespace: demo\n'),
     });
-    mockUseClusterService.mockReturnValue({ deployments: [], loaded: true, error: null });
+    mockUseClusterService.mockReturnValue(clusterData());
 
     render(
       <MemoryRouter>
@@ -152,7 +198,7 @@ describe('FunctionsListPage', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText('orphan-func')).toBeInTheDocument();
+    expect(await screen.findByTestId('fn-status')).toHaveTextContent('NotDeployed');
   });
 
   it('shows error alert when listing repos fails', async () => {
@@ -161,7 +207,7 @@ describe('FunctionsListPage', () => {
       listFunctionRepos: vi.fn().mockRejectedValue(new Error('Bad credentials')),
       fetchFileContent: vi.fn(),
     });
-    mockUseClusterService.mockReturnValue({ deployments: [], loaded: true, error: null });
+    mockUseClusterService.mockReturnValue(clusterData());
 
     render(
       <MemoryRouter>
@@ -178,7 +224,7 @@ describe('FunctionsListPage', () => {
       listFunctionRepos: vi.fn().mockRejectedValue(new Error('Requires authentication')),
       fetchFileContent: vi.fn(),
     });
-    mockUseClusterService.mockReturnValue({ deployments: [], loaded: true, error: null });
+    mockUseClusterService.mockReturnValue(clusterData());
 
     render(
       <MemoryRouter>
@@ -195,7 +241,7 @@ describe('FunctionsListPage', () => {
       listFunctionRepos: mockListRepos,
       fetchFileContent: vi.fn(),
     });
-    mockUseClusterService.mockReturnValue({ deployments: [], loaded: true, error: null });
+    mockUseClusterService.mockReturnValue(clusterData());
 
     render(
       <MemoryRouter>
@@ -214,7 +260,7 @@ describe('FunctionsListPage', () => {
       listFunctionRepos: vi.fn().mockResolvedValue([]),
       fetchFileContent: vi.fn(),
     });
-    mockUseClusterService.mockReturnValue({ deployments: [], loaded: true, error: null });
+    mockUseClusterService.mockReturnValue(clusterData());
 
     render(
       <MemoryRouter>
@@ -230,7 +276,7 @@ describe('FunctionsListPage', () => {
       listFunctionRepos: vi.fn().mockResolvedValue([]),
       fetchFileContent: vi.fn(),
     });
-    mockUseClusterService.mockReturnValue({ deployments: [], loaded: true, error: null });
+    mockUseClusterService.mockReturnValue(clusterData());
 
     render(
       <MemoryRouter>
@@ -242,5 +288,115 @@ describe('FunctionsListPage', () => {
 
     const button = screen.getByRole('button', { name: 'Create function' });
     expect(button).toBeDisabled();
+  });
+
+  it('enriches function with status from Knative Service and replicas from Deployment', async () => {
+    renderAuthenticated();
+    mockUseSourceControl.mockReturnValue({
+      listFunctionRepos: vi.fn().mockResolvedValue([repoFixture('my-func')]),
+      fetchFileContent: vi.fn().mockResolvedValue('name: my-func\nruntime: go\nnamespace: demo\n'),
+    });
+    mockUseClusterService.mockReturnValue(
+      clusterData({
+        knativeServices: [ksvcFixture('my-func', 'True')],
+        deployments: [deploymentFixture('my-func', 1, 1)],
+      }),
+    );
+
+    render(
+      <MemoryRouter>
+        <FunctionsListPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByTestId('fn-status')).toHaveTextContent('Running');
+    expect(screen.getByTestId('fn-replicas')).toHaveTextContent('1');
+    expect(screen.getByTestId('fn-url')).toHaveTextContent('https://my-func-demo.apps.example.com');
+  });
+
+  it('shows ScaledToZero when Knative Service is Ready but Deployment has 0 replicas', async () => {
+    renderAuthenticated();
+    mockUseSourceControl.mockReturnValue({
+      listFunctionRepos: vi.fn().mockResolvedValue([repoFixture('my-func')]),
+      fetchFileContent: vi.fn().mockResolvedValue('name: my-func\nruntime: go\nnamespace: demo\n'),
+    });
+    mockUseClusterService.mockReturnValue(
+      clusterData({
+        knativeServices: [ksvcFixture('my-func', 'True')],
+        deployments: [deploymentFixture('my-func', 0, 0)],
+      }),
+    );
+
+    render(
+      <MemoryRouter>
+        <FunctionsListPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByTestId('fn-status')).toHaveTextContent('ScaledToZero');
+    expect(screen.getByTestId('fn-replicas')).toHaveTextContent('0');
+  });
+
+  it('shows Deploying when Knative Service Ready condition is Unknown', async () => {
+    renderAuthenticated();
+    mockUseSourceControl.mockReturnValue({
+      listFunctionRepos: vi.fn().mockResolvedValue([repoFixture('my-func')]),
+      fetchFileContent: vi.fn().mockResolvedValue('name: my-func\nruntime: go\nnamespace: demo\n'),
+    });
+    mockUseClusterService.mockReturnValue(
+      clusterData({
+        knativeServices: [ksvcFixture('my-func', 'Unknown')],
+        deployments: [deploymentFixture('my-func', 1, 0)],
+      }),
+    );
+
+    render(
+      <MemoryRouter>
+        <FunctionsListPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByTestId('fn-status')).toHaveTextContent('Deploying');
+  });
+
+  it('shows Error when Knative Service Ready condition is False', async () => {
+    renderAuthenticated();
+    mockUseSourceControl.mockReturnValue({
+      listFunctionRepos: vi.fn().mockResolvedValue([repoFixture('my-func')]),
+      fetchFileContent: vi.fn().mockResolvedValue('name: my-func\nruntime: go\nnamespace: demo\n'),
+    });
+    mockUseClusterService.mockReturnValue(
+      clusterData({
+        knativeServices: [ksvcFixture('my-func', 'False')],
+        deployments: [deploymentFixture('my-func', 0, 0)],
+      }),
+    );
+
+    render(
+      <MemoryRouter>
+        <FunctionsListPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByTestId('fn-status')).toHaveTextContent('Error');
+  });
+
+  it('passes function names to useClusterService', async () => {
+    renderAuthenticated();
+    mockUseSourceControl.mockReturnValue({
+      listFunctionRepos: vi.fn().mockResolvedValue([repoFixture('fn-a')]),
+      fetchFileContent: vi.fn().mockResolvedValue('name: fn-a\nruntime: go\nnamespace: demo\n'),
+    });
+    mockUseClusterService.mockReturnValue(clusterData());
+
+    render(
+      <MemoryRouter>
+        <FunctionsListPage />
+      </MemoryRouter>,
+    );
+
+    await screen.findByTestId('fn-name');
+
+    expect(mockUseClusterService).toHaveBeenLastCalledWith(['fn-a']);
   });
 });

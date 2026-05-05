@@ -94,7 +94,6 @@ function useFunctionListPage(): {
 } {
   const isConnectedToForge = useContext(ForgeConnectionContext).isActive;
   const sourceControl = useSourceControlService();
-  const { deployments, loaded: clusterLoaded } = useClusterService();
   const navigate = useNavigate();
 
   const [functionItems, setFunctionItems] = useState<FunctionTableItem[]>([]);
@@ -152,15 +151,22 @@ function useFunctionListPage(): {
     };
   }, [sourceControl, isConnectedToForge]);
 
+  const functionNames = useMemo(() => functionItems.map((item) => item.name), [functionItems]);
+
+  const { knativeServices, deployments, loaded: clusterLoaded } = useClusterService(functionNames);
+
   const functions = useMemo(
     () =>
       functionItems.map((item) => {
+        const ksvc = knativeServices.find(
+          (s) => s.metadata?.labels?.['function.knative.dev/name'] === item.name,
+        );
         const deployment = deployments.find(
           (d) => d.metadata?.labels?.['function.knative.dev/name'] === item.name,
         );
-        return deployment ? enrichItem(item, deployment) : item;
+        return ksvc && deployment ? enrichItem(item, ksvc, deployment) : item;
       }),
-    [functionItems, deployments],
+    [functionItems, knativeServices, deployments],
   );
 
   const loaded = reposLoaded && clusterLoaded;
@@ -179,29 +185,35 @@ function newItem(repoName: string, namespace: string, runtime: string): Function
   };
 }
 
-function enrichItem(item: FunctionTableItem, deployment: K8sResourceKind): FunctionTableItem {
+function enrichItem(
+  item: FunctionTableItem,
+  ksvc: K8sResourceKind,
+  deployment: K8sResourceKind,
+): FunctionTableItem {
   return {
     ...item,
-    status: deriveStatus(deployment),
-    url: `http://${item.name}.${deployment.metadata?.namespace}.svc`,
+    status: deriveStatus(ksvc, deployment),
+    url: ksvc.status?.url,
     replicas: deployment.status?.readyReplicas ?? 0,
-    deployment,
+    deployment: ksvc,
   };
 }
 
-function deriveStatus(deployment: K8sResourceKind): FunctionStatus {
-  const desired = deployment.spec?.replicas ?? 0;
-  const ready = deployment.status?.readyReplicas ?? 0;
-  const conditions = deployment.status?.conditions ?? [];
+function deriveStatus(ksvc: K8sResourceKind, deployment: K8sResourceKind): FunctionStatus {
+  const conditions = ksvc.status?.conditions ?? [];
 
-  const hasFailed = conditions.some(
-    (c: { type: string; status: string }) => c.type === 'Available' && c.status === 'False',
-  );
-  if (hasFailed) return 'Error';
+  const ready = conditions.find((c: { type: string }) => c.type === 'Ready');
+  if (!ready) return 'Deploying';
 
-  if (ready === desired && desired > 0) return 'Running';
-  if (ready === 0 && desired === 0) return 'ScaledToZero';
-  if (ready < desired) return 'Deploying';
+  if (ready.status === 'True') {
+    const desired = deployment.spec?.replicas ?? 0;
+    const readyReplicas = deployment.status?.readyReplicas ?? 0;
+    if (desired === 0 && readyReplicas === 0) return 'ScaledToZero';
 
-  return 'Unknown';
+    return 'Running';
+  }
+
+  if (ready.status === 'False') return 'Error';
+
+  return 'Deploying';
 }
