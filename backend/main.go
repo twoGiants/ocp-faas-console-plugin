@@ -116,34 +116,40 @@ type fileEntry struct {
 	Type    string `json:"type"`
 }
 
+func jsonError(w http.ResponseWriter, msg string, code int) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	json.NewEncoder(w).Encode(map[string]string{"message": msg})
+}
+
 func handleFuncCreate(w http.ResponseWriter, r *http.Request) {
 	var cfg funcCreateRequest
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1 MB limit
 	if err := json.NewDecoder(r.Body).Decode(&cfg); err != nil {
-		http.Error(w, "invalid request body: "+err.Error(), http.StatusBadRequest)
+		jsonError(w, "invalid request body: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	if !validName.MatchString(cfg.Name) {
-		http.Error(w, "invalid function name: must contain only lowercase alphanumeric characters and hyphens", http.StatusBadRequest)
+		jsonError(w, "invalid function name: must contain only lowercase alphanumeric characters and hyphens", http.StatusBadRequest)
 		return
 	}
 	if !validRuntimes[cfg.Runtime] {
-		http.Error(w, "invalid runtime: must be one of node, python, go, quarkus", http.StatusBadRequest)
+		jsonError(w, "invalid runtime: must be one of node, python, go, quarkus", http.StatusBadRequest)
 		return
 	}
 	if !validBranch.MatchString(cfg.Branch) {
-		http.Error(w, "invalid branch name", http.StatusBadRequest)
+		jsonError(w, "invalid branch name", http.StatusBadRequest)
 		return
 	}
 	if !validNamespace.MatchString(cfg.Namespace) {
-		http.Error(w, "invalid namespace: must contain only lowercase alphanumeric characters and hyphens", http.StatusBadRequest)
+		jsonError(w, "invalid namespace: must contain only lowercase alphanumeric characters and hyphens", http.StatusBadRequest)
 		return
 	}
 
 	tmpDir, err := os.MkdirTemp("", "func-create-*")
 	if err != nil {
-		http.Error(w, "failed to create temp dir: "+err.Error(), http.StatusInternalServerError)
+		jsonError(w, "failed to create temp dir: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 	defer os.RemoveAll(tmpDir)
@@ -160,12 +166,12 @@ func handleFuncCreate(w http.ResponseWriter, r *http.Request) {
 		Template:  "http",
 	})
 	if err != nil {
-		http.Error(w, "failed to initialize function: "+err.Error(), http.StatusInternalServerError)
+		jsonError(w, "failed to initialize function: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	if err := generateCIWorkflow(root, cfg.Branch, cfg.Registry); err != nil {
-		http.Error(w, "failed to generate CI workflow: "+err.Error(), http.StatusInternalServerError)
+		jsonError(w, "failed to generate CI workflow: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -205,7 +211,7 @@ func handleFuncCreate(w http.ResponseWriter, r *http.Request) {
 		return nil
 	})
 	if err != nil {
-		http.Error(w, "failed to read generated files: "+err.Error(), http.StatusInternalServerError)
+		jsonError(w, "failed to read generated files: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
