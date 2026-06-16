@@ -224,8 +224,9 @@ async function loadFunctionTableItems(svc: SourceControlService): Promise<Functi
       try {
         const funcYaml = await svc.fetchFileContent(repo, 'func.yaml');
         const { name, namespace, runtime } = parseFuncYaml(funcYaml);
-        return newItem(name || repo.name, namespace, runtime);
-      } catch {
+        return newItem(name || repo.name, repo.name, namespace, runtime);
+      } catch (err: unknown) {
+        console.warn(`Skipping repo ${repo.name}: ${err instanceof Error ? err.message : err}`);
         return null;
       }
     }),
@@ -233,9 +234,15 @@ async function loadFunctionTableItems(svc: SourceControlService): Promise<Functi
   return results.filter((item): item is FunctionTableItem => item !== null);
 }
 
-function newItem(name: string, namespace: string, runtime: string): FunctionTableItem {
+function newItem(
+  name: string,
+  repoName: string,
+  namespace: string,
+  runtime: string,
+): FunctionTableItem {
   return {
     name,
+    repoName,
     namespace,
     runtime,
     status: 'NotDeployed' as const,
