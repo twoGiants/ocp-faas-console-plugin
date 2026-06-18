@@ -81,9 +81,7 @@ function setupCreateFlowHandlers() {
   server.use(
     // Backend: generate function files
     http.post(`${BACKEND_API}/api/function/create`, () =>
-      HttpResponse.json([
-        { path: 'func.yaml', mode: '100644', content: 'name: f', type: 'blob' },
-      ]),
+      HttpResponse.json([{ path: 'func.yaml', mode: '100644', content: 'name: f', type: 'blob' }]),
     ),
 
     // GitHub: check repo doesn't exist
