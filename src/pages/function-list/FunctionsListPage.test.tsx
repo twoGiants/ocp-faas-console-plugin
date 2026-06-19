@@ -539,15 +539,13 @@ describe('FunctionsListPage', () => {
 
   it('shows error item when fetchFileContent throws (deleted repo)', async () => {
     renderAuthenticated();
-    mockUseSourceControl.mockReturnValue({
-      listFunctionRepos: vi
-        .fn()
-        .mockResolvedValue([repoFixture('good-func'), repoFixture('deleted-repo')]),
-      fetchFileContent: vi.fn().mockImplementation((repo: { name: string }) => {
-        if (repo.name === 'deleted-repo') return Promise.reject(new Error('Not Found'));
-        return Promise.resolve(`name: ${repo.name}\nruntime: go\nnamespace: demo\n`);
-      }),
-    });
+    setupReposHandler([repoFixture('good-func'), repoFixture('deleted-repo')]);
+    setupFuncYamlHandler('good-func', 'name: good-func\nruntime: go\nnamespace: demo\n');
+    server.use(
+      http.get(`${GITHUB_API}/repos/twoGiants/deleted-repo/contents/func.yaml`, () =>
+        HttpResponse.json({ message: 'Not Found' }, { status: 404 }),
+      ),
+    );
     mockUseClusterService.mockReturnValue(clusterData());
 
     render(
@@ -564,12 +562,8 @@ describe('FunctionsListPage', () => {
 
   it('uses func.yaml name instead of repo name for cluster matching', async () => {
     renderAuthenticated();
-    mockUseSourceControl.mockReturnValue({
-      listFunctionRepos: vi.fn().mockResolvedValue([repoFixture('my-repo')]),
-      fetchFileContent: vi
-        .fn()
-        .mockResolvedValue('name: my-function\nruntime: node\nnamespace: demo\n'),
-    });
+    setupReposHandler([repoFixture('my-repo')]);
+    setupFuncYamlHandler('my-repo', 'name: my-function\nruntime: node\nnamespace: demo\n');
     mockUseClusterService.mockReturnValue(
       clusterData({
         knativeServices: [ksvcFixture('my-function', 'True')],
