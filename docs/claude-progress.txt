@@ -2,6 +2,15 @@
 # Newest entries first. Agents: append your entry at the top after the header.
 
 ---
+## 2026-06-19 | Session: Error handling in list page
+Worked on: Improve error handling for failed func.yaml fetches
+Completed:
+- Changed catch block in loadFunctionTableItems to return an error item instead of silently dropping the repo (was returning null, now returns item with status 'Error')
+- Removed unused error parameter from catch block
+Left off: Change is staged and ready for commit on SRVOCF-840 branch.
+Blockers: None
+
+---
 ## 2026-05-21 | Session: Page co-location restructure (continued)
 Worked on: Follow-up fixes from review, test cleanup, docs
 Completed:

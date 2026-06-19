@@ -225,9 +225,10 @@ async function loadFunctionTableItems(svc: SourceControlService): Promise<Functi
         const funcYaml = await svc.fetchFileContent(repo, 'func.yaml');
         const { name, namespace, runtime } = parseFuncYaml(funcYaml);
         return newItem(name || repo.name, repo.name, namespace, runtime);
-      } catch (err: unknown) {
-        console.warn(`Skipping repo ${repo.name}: ${err instanceof Error ? err.message : err}`);
-        return null;
+      } catch {
+        const item = newItem(repo.name, repo.name, '<UNKNOWN>', '<UNKNOWN>');
+        item.status = 'Error';
+        return item;
       }
     }),
   );
