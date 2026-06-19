@@ -7,7 +7,11 @@ Worked on: Improve error handling for failed func.yaml fetches
 Completed:
 - Changed catch block in loadFunctionTableItems to return an error item instead of silently dropping the repo (was returning null, now returns item with status 'Error')
 - Removed unused error parameter from catch block
-Left off: Change is staged and ready for commit on SRVOCF-840 branch.
+- Updated test: 'skips repo' renamed to 'shows error item', now expects both items in the table (good repo + error repo) instead of only the good one
+Left off: Both changes committed on SRVOCF-840 branch.
+Blockers: None
+
+---
 ## 2026-06-16 | Session: PR #36 - GitHub Pages local dev + clipboard fix (SRVOCF-843)
 Worked on: Local GitHub Pages dev support, clipboard copy error handling, PR review feedback
 Completed:

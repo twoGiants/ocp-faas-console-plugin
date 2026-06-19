@@ -520,7 +520,7 @@ describe('FunctionsListPage', () => {
     });
   });
 
-  it('skips repo when fetchFileContent throws (deleted repo)', async () => {
+  it('shows error item when fetchFileContent throws (deleted repo)', async () => {
     renderAuthenticated();
     mockUseSourceControl.mockReturnValue({
       listFunctionRepos: vi
@@ -540,8 +540,9 @@ describe('FunctionsListPage', () => {
     );
 
     const names = await screen.findAllByTestId('fn-name');
-    expect(names).toHaveLength(1);
+    expect(names).toHaveLength(2);
     expect(names[0]).toHaveTextContent('good-func');
+    expect(names[1]).toHaveTextContent('deleted-repo');
   });
 
   it('uses func.yaml name instead of repo name for cluster matching', async () => {
