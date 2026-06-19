@@ -30,9 +30,11 @@ vi.mock('@openshift-console/dynamic-plugin-sdk', () => {
 });
 
 const K8S_API = 'http://localhost/api/kubernetes';
+const BACKEND_API = 'http://localhost/api/proxy/plugin/console-functions-plugin/backend';
 
 function setupK8sHandlers(namespace: string) {
   server.use(
+    http.get(`${BACKEND_API}/api/cluster/ca`, () => HttpResponse.json({ ca: 'dGVzdC1jYQ==' })),
     http.post(`${K8S_API}/api/v1/namespaces/${namespace}/serviceaccounts`, () =>
       HttpResponse.json({}),
     ),
@@ -71,9 +73,22 @@ describe('OcpClusterService', () => {
     expect(parsed.apiVersion).toBe('v1');
     expect(parsed.kind).toBe('Config');
     expect(parsed.clusters[0].cluster.server).toBe('https://api.cluster.example.com:6443');
-    expect(parsed.clusters[0].cluster['insecure-skip-tls-verify']).toBe(true);
+    expect(parsed.clusters[0].cluster['certificate-authority-data']).toBe('dGVzdC1jYQ==');
+    expect(parsed.clusters[0].cluster['insecure-skip-tls-verify']).toBeUndefined();
     expect(parsed.users[0].user.token).toBe('sa-token-value');
     expect(parsed.contexts[0].context.namespace).toBe(namespace);
+  });
+
+  it('omits CA fields when cluster uses a publicly trusted certificate', async () => {
+    server.use(http.get(`${BACKEND_API}/api/cluster/ca`, () => HttpResponse.json({ ca: null })));
+
+    const svc = new OcpClusterService();
+    const kubeconfig = await svc.generateKubeconfig(namespace);
+
+    const parsed = JSON.parse(kubeconfig);
+    expect(parsed.clusters[0].cluster['certificate-authority-data']).toBeUndefined();
+    expect(parsed.clusters[0].cluster['insecure-skip-tls-verify']).toBeUndefined();
+    expect(parsed.clusters[0].cluster.server).toBe('https://api.cluster.example.com:6443');
   });
 
   it('treats 409 Conflict on SA/Role/RoleBinding as success', async () => {
