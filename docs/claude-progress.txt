@@ -10,6 +10,51 @@ Completed:
 - Deduplicated gofmt call (was running twice, now captured in variable)
 - Tested: hook correctly blocks on lint failure and passes when clean
 Left off: Push fix to PR #6 on upstream repo.
+## 2026-06-19 | Session: SRVOCF-840 PR review fixes
+Worked on: Address PR review comments on error handling catch block
+Completed:
+- Replaced '<UNKNOWN>' with empty strings for namespace/runtime (TextOrDash renders em dashes automatically)
+- Added console.error logging in catch block for developer debugging
+- Removed redundant null filter since catch always returns an item now
+Left off: Changes committed on SRVOCF-840 branch.
+## 2026-06-19 | Session: MSW migration merge conflict resolution
+Worked on: Merge upstream/master into SRVOCF-846 branch, resolve conflicts
+Completed:
+- Merged upstream/master (cluster CA feature) into SRVOCF-846--msw-migration
+- Resolved conflict in OcpClusterService.test.ts: kept MSW handlers, added new CA endpoint handler
+- Added CA handler to FunctionCreatePage.test.tsx for the create flow
+- Added public CA test (ca: null) using MSW override
+- All 136 tests passing
+Left off: Merge commit done, one staged fix for FunctionCreatePage CA handler.
+Blockers: None
+
+---
+## 2026-06-16 | Session: PR #36 - GitHub Pages local dev + clipboard fix (SRVOCF-843)
+Worked on: Local GitHub Pages dev support, clipboard copy error handling, PR review feedback
+Completed:
+- Added error handling for clipboard copy buttons: .catch() on writeText, error state styling (.copy-error class with red color, X icon, "Copy failed" label)
+- GitHub Pages local dev: build_pages in init.sh, README simplification, CRC host mapping, .gitignore updates
+- Extracted PLUGIN_NAME local variable in build_pages() to replace hardcoded strings
+- Moved helm prerequisite check from check_prerequisites() into build_pages() (only needed there)
+- Added features.json entry for SRVOCF-843, set "passes": true
+- All 14 suites, 126 tests passing, webpack builds clean
+Left off: Changes ready to commit and push for merge.
+Blockers: None
+
+## 2026-06-10 | Session: Kubeconfig CA cert via backend TLS probe
+Worked on: Replace insecure-skip-tls-verify in generated kubeconfigs with proper CA handling
+Completed:
+- New backend endpoint GET /api/cluster/ca with two-probe TLS logic: system roots first (public CA detection), then SA CA bundle (private CA embedding)
+- clusterCAHandler struct with injectable SystemTLS for testability
+- Frontend OcpClusterService updated: #fetchClusterCA, #buildKubeconfig with ca parameter, removed insecure-skip-tls-verify
+- 8 Go tests covering all handler paths (missing param, non-HTTPS, missing file, public CA, private CA, bundle mismatch, empty file, malformed file)
+- Frontend tests updated for CA-present and CA-null cases
+- --kube-root-ca-path CLI flag for local dev, init.sh extracts CA via oc get cm kube-root-ca.crt
+- Investigated Option B (Kubernetes API for server URL and ConfigMap) but rejected due to RBAC requirements
+- Confirmed OCP dynamic plugin proxy does not pass cluster metadata to backends
+- Dockerfile: copy RHEL CA bundle from go-toolset build stage into ubi9-micro (confirmed ubi9-micro has zero CA infrastructure, no /etc/pki/ or /etc/ssl/ at all)
+- All CI green: 8 Go tests, 14 TS suites / 127 tests, build clean
+Left off: Branch kubeconfig-ca ready for squash/merge. CA_FILE temp file cleanup in init.sh not yet addressed (minor).
 Blockers: None
 
 ---
