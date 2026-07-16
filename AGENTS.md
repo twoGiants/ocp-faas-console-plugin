@@ -23,7 +23,6 @@ No em dashes (`—`). Use commas, periods, or parentheses instead.
 
 | File | Purpose |
 |------|---------|
-| `docs/WORKFLOW.md` | Startup sequence, feature dev sequence, branching, PRs, session rules |
 | `docs/ARCHITECTURE.md` | Layered architecture, dependency rules |
 | `docs/STYLEGUIDE.md` | Code style, naming conventions |
 | `docs/TESTING.md` | Testing strategy, tools, conventions, mock patterns |

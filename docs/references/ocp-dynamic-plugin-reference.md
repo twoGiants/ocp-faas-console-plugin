@@ -195,7 +195,7 @@ return <h1>{t('Hello, World!')}</h1>;
   "type": "console.navigation/href",
   "properties": {
     "id": "my-nav-item",
-    "name": "%plugin__func-console~My Page%",
+    "name": "%plugin__console-functions-plugin~My Page%",
     "href": "/my-page",
     "perspective": "admin",
     "section": "home"

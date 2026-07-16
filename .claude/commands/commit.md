@@ -1,5 +1,5 @@
 ---
-allowed-tools: Bash(git add:*), Bash(git status:*), Bash(git commit:*), Bash(git log:*), Bash(git diff:*), Bash(git branch:*)
+allowed-tools: Bash(git add:*), Bash(git status:*), Bash(git commit:*), Bash(git log:*), Bash(git diff:*), Bash(git branch:*), Bash(./hack/parse-commit-args.sh:*)
 description: Create a git commit
 argument-hint: "[--dry-run] [JIRA-TICKET]"
 ---
@@ -22,6 +22,7 @@ Create a git commit message following these rules:
 
 ```txt
 <type>: <subject - max 50 chars total, imperative mood, conventional commit spec>
+
 <Body - wrapped at 72 chars, explains what and why>
 <Optional bullet points for clarity>
 <Optional "Issue <JIRA-TICKET>" if a ticket was provided>

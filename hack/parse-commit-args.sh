@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Used by .claude/command/commit.md slash command.
+# Used by .claude/commands/commit.md slash command.
 
 mode="commit"
 ticket="none"
@@ -9,10 +9,10 @@ ticket="none"
 for arg in "$@"; do
   if [ "$arg" = "--dry-run" ]; then
     mode="dry-run"
-  elif echo "$arg" | grep -qE '^[A-Z]+-[0-9]+$'; then
+  elif [[ "$arg" =~ ^[A-Z]+-[0-9]+$ ]]; then
     ticket="$arg"
-  elif echo "$arg" | grep -qoE '[A-Z]+-[0-9]+'; then
-    ticket=$(echo "$arg" | grep -oE '[A-Z]+-[0-9]+')
+  elif [[ "$arg" =~ ([A-Z]+-[0-9]+) ]]; then
+    ticket="${BASH_REMATCH[1]}"
   fi
 done
 

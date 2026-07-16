@@ -12,9 +12,9 @@
 
 - [x] Task 1: Delete PoC artifact files
 - [x] Task 2: Remove PoC artifact references from project docs
-- [x] Task 3: Simplify slash commands (begin/end)
+- [x] Task 3: Simplify slash commands (begin/commit)
 - [ ] Task 4: Write `docs/workflow-guide.md`
-- [ ] Task 5: Update `docs/WORKFLOW.md`
+- [x] Task 5: ~~Update `docs/WORKFLOW.md`~~ (superseded, file deleted per review)
 - [ ] Task 6: Branch name validation script
 - [ ] Task 7: Add branch name lint to Husky pre-push hook
 - [ ] Task 8: Add branch name and commit message lint to CI
@@ -59,7 +59,7 @@ Update these files to remove references to deleted files:
 - References to `features.json` in the Feature Development Sequence (step 2, step 6)
 - Reference to `claude-progress.txt` in step 6 and Session Rules
 - Reference to `agent-struggles.json` in Continuous Improvement section
-- The `hack/next-plan-number.sh` reference in Branching section (will be updated in Task 5)
+- The `hack/next-plan-number.sh` reference in Branching section
 
 **`docs/TESTING.md`** — Remove:
 - `features.json` reference in the E2e test layer description ("Validate features.json entries")
@@ -84,14 +84,12 @@ Current commands in `.claude/commands/`:
 **Rename `init-session.md` to `begin.md`** and simplify:
 - Remove steps that reference deleted files (features.json, claude-progress.txt, agent-struggles.json)
 - Remove the "create feature entry in features.json" step
-- Keep: orient (git log), CI check, pick story from Jira
+- Keep: orient (git log), pick story from Jira
 - Simplify the "pick story" step: accept optional Jira ticket argument
 
 **Rename `session-commit.md` to `commit.md`** and update:
 - Add `--dry-run` flag support via `hack/parse-commit-args.sh`
 - Add optional Jira ticket argument for issue references
-
-**Update `docs/WORKFLOW.md`** reference from `init-session` to `begin`.
 
 Commit: `chore: simplify slash commands to begin/commit`
 
@@ -102,7 +100,7 @@ Commit: `chore: simplify slash commands to begin/commit`
 Create the consolidated workflow guide. Content sources:
 - Branch naming: new Jira-linked convention
 - Commit messages: `.claude/commands/commit.md` (link, don't duplicate)
-- PR guidelines: expand from `docs/WORKFLOW.md`
+- PR guidelines: from PR template and team conventions
 
 Structure:
 
@@ -124,20 +122,17 @@ Every branch must link to a Jira ticket.
 
 ## Commit Messages
 
-Follow [commit-message-guide.md](references/commit-message-guide.md).
+Follow [`.claude/commands/commit.md`](../../.claude/commands/commit.md).
 
 Key rules:
 - Conventional commit format: `<type>: <description>`
 - Imperative mood, max 50 chars subject
 - Body explains what and why
-- Authorship trailer required
 
 ## Pull Requests
 
-**Title:** `<Type>: <Sentence ending with a period.>`
-- Capitalize the type and first word, end with a period
-- Example: `Feat: Add function list page with empty state.`
-- Types match conventional commits but capitalized
+**Title:** `<JIRA-ID>: <Sentence ending with a period.>`
+- Example: `SRVOCF-982: Clean up PoC-era workflow artifacts and sanitize slash commands.`
 
 **Description:** Use the PR template (`.github/pull_request_template.md`).
 - List changes with emoji prefixes
@@ -145,7 +140,6 @@ Key rules:
 - Explain "why" if no linked issue
 
 **Process:**
-- Open draft PRs early to reserve the PR number
 - Prefer many small PRs, merge often
 - Make thorough reviews, propose architectural improvements
 
@@ -161,19 +155,10 @@ Commit: `docs: add workflow guide`
 
 ---
 
-## Task 5: Update `docs/WORKFLOW.md`
+## ~~Task 5: Update `docs/WORKFLOW.md`~~
 
-Rewrite to reference the new guide and remove PoC-era workflow:
-
-- Branching section: replace PR-number convention with Jira-linked convention, link to `docs/workflow-guide.md`
-- Remove `hack/next-plan-number.sh` reference
-- Feature Development Sequence: simplify, remove features.json references
-- Pull Requests section: link to workflow guide instead of duplicating
-- Session Rules: remove claude-progress.txt reference
-- Remove Continuous Improvement section (agent-struggles.json)
-- Update startup sequence reference from `init-session` to `begin`
-
-Commit: `docs: update WORKFLOW.md for new conventions`
+**Superseded:** WORKFLOW.md was deleted entirely per PR review feedback. Workflow
+logic lives in the three slash commands (begin, commit, create-pr) instead.
 
 ---
 
