@@ -1,5 +1,7 @@
 import { K8sResourceKind, useK8sWatchResource } from '@openshift-console/dynamic-plugin-sdk';
 import { useMemo } from 'react';
+import { ClusterFunction } from './ClusterFunction';
+import { listKnativeClusterFunctions } from './ClusterFunctionKnative';
 import { OcpClusterService } from './OcpClusterService';
 
 const instance = new OcpClusterService();
@@ -7,8 +9,7 @@ const instance = new OcpClusterService();
 const FUNCTION_NAME_LABEL = 'function.knative.dev/name';
 
 interface ClusterService {
-  knativeServices: K8sResourceKind[];
-  deployments: K8sResourceKind[];
+  functions: ReadonlyMap<string, ClusterFunction>;
   loaded: boolean;
   error: unknown;
   generateKubeconfig: (namespace: string) => Promise<string>;
@@ -50,9 +51,15 @@ export function useClusterService(functionNames: string[] = []): ClusterService 
   const [knSvcs, knLoaded, knError] = useK8sWatchResource<K8sResourceKind[]>(knSvcConfig);
   const [deps, depLoaded, depError] = useK8sWatchResource<K8sResourceKind[]>(depConfig);
 
+  const functions = useMemo(() => {
+    const safeKnSvcs = knLoaded ? (knSvcs ?? []) : [];
+    const safeDeps = depLoaded ? (deps ?? []) : [];
+    const list = listKnativeClusterFunctions(safeKnSvcs, safeDeps);
+    return new Map(list.map((cf) => [cf.name, cf]));
+  }, [knSvcs, knLoaded, deps, depLoaded]);
+
   return {
-    knativeServices: knLoaded ? (knSvcs ?? []) : [],
-    deployments: depLoaded ? (deps ?? []) : [],
+    functions,
     loaded: knLoaded && depLoaded,
     error: knError || depError,
     generateKubeconfig: instance.generateKubeconfig.bind(instance),
