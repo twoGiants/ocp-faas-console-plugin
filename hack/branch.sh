@@ -2,6 +2,20 @@
 set -euo pipefail
 
 # Used by .claude/commands/begin.md slash command.
+#
+# Usage:
+#   ./hack/branch.sh                              # detect from current branch
+#   ./hack/branch.sh SRVOCF-986                   # create branch from ticket
+#   ./hack/branch.sh --dry-run SRVOCF-986         # show command without executing
+#   ./hack/branch.sh https://redhat.atlassian.net/browse/SRVOCF-986  # accepts URLs
+#
+# Cases:
+# 1. No args, on feature branch        -> INFO: already on branch, exit 0
+# 2. No args, on master                -> prints usage, exit 1
+# 3. Ticket arg, on same ticket branch -> INFO: already on branch, exit 0
+# 4. Ticket arg, on different branch   -> WARNING: checkout master first, exit 1
+# 5. Ticket arg, on master             -> creates branch (or prints command with --dry-run)
+# 6. --dry-run only, on feature branch -> INFO: already on branch, exit 0
 
 dry_run=false
 input=""
@@ -13,6 +27,15 @@ for arg in "$@"; do
     input="$arg"
   fi
 done
+
+# If no ticket provided, check if already on a feature branch
+if [ -z "$input" ]; then
+  current=$(git rev-parse --abbrev-ref HEAD)
+  if echo "$current" | grep -qE '^[A-Z]+-[0-9]+'; then
+    echo "INFO: Already on feature branch: $current"
+    exit 0
+  fi
+fi
 
 # Check jira CLI
 if ! command -v jira &>/dev/null; then

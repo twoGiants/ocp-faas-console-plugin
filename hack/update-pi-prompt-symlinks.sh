@@ -2,6 +2,10 @@
 set -euo pipefail
 
 # For pi users to keep the claude slash commands in sync with pi prompt templates.
+# Recreates all symlinks in .pi/prompts/ from .claude/commands/.
+#
+# Usage:
+#   ./hack/update-pi-prompt-symlinks.sh
 
 cd .pi/prompts
 

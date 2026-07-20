@@ -2,6 +2,13 @@
 set -euo pipefail
 
 # Used by .claude/commands/commit.md slash command.
+# Parses arguments and returns MODE (commit or dry-run) and TICKET.
+#
+# Usage:
+#   ./hack/parse-commit-args.sh                    # MODE: commit, TICKET: none
+#   ./hack/parse-commit-args.sh --dry-run           # MODE: dry-run, TICKET: none
+#   ./hack/parse-commit-args.sh SRVOCF-986          # MODE: commit, TICKET: SRVOCF-986
+#   ./hack/parse-commit-args.sh --dry-run SRVOCF-986 # MODE: dry-run, TICKET: SRVOCF-986
 
 mode="commit"
 ticket="none"
