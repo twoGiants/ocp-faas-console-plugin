@@ -63,16 +63,7 @@ else
     PLUGIN_HOST="host.docker.internal"
 fi
 CONTAINER_NETWORK_OPTS="-p ${CONSOLE_PORT}:9000"
-if [[ "$BRIDGE_K8S_MODE_OFF_CLUSTER_ENDPOINT" == *"crc.testing"* ]]; then
-    if [[ "$(uname -s)" == "Darwin" ]]; then
-        HOST_GW=$(podman machine ssh "ip route show default" 2>/dev/null | awk '{print $3}')
-        if [ -n "$HOST_GW" ]; then
-            CONTAINER_NETWORK_OPTS="${CONTAINER_NETWORK_OPTS} --add-host api.crc.testing:${HOST_GW}"
-        fi
-    else
-        CONTAINER_NETWORK_OPTS="${CONTAINER_NETWORK_OPTS} --add-host api.crc.testing:host-gateway"
-    fi
-fi
+[[ "$BRIDGE_K8S_MODE_OFF_CLUSTER_ENDPOINT" == *"crc.testing"* ]] && CONTAINER_NETWORK_OPTS="${CONTAINER_NETWORK_OPTS} --add-host api.crc.testing:host-gateway"
 
 BRIDGE_PLUGINS="${PLUGIN_NAME}=http://${PLUGIN_HOST}:${PLUGIN_PORT}"
 BRIDGE_PLUGIN_PROXY='{"services":[{"consoleAPIPath":"/api/proxy/plugin/'"${PLUGIN_NAME}"'/backend/","endpoint":"http://'"${PLUGIN_HOST}"':'"${BACKEND_PORT}"'","authorize":false}]}'

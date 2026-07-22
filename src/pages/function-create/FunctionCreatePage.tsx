@@ -12,6 +12,7 @@ import {
 import { useClusterService } from '../../common/services/cluster/useClusterService';
 import { useFunctionService } from '../../common/services/function/useFunctionService';
 import { useSourceControlService } from '../../common/services/source-control/useSourceControlService';
+import { EnvVar, PlainEnvVar, ResourceEnvVar } from '../../common/services/types';
 import { errorMessage } from '../../common/utils/utils';
 
 export default function FunctionCreatePage() {
@@ -60,6 +61,37 @@ function FunctionCreatePageContent() {
   );
 }
 
+function toEnvVars(
+  plain: PlainEnvVar[],
+  secrets: ResourceEnvVar[],
+  configMaps: ResourceEnvVar[],
+): EnvVar[] | undefined {
+  const result = [
+    ...plain.map((e) => ({
+      name: e.name,
+      source: 'value' as const,
+      value: e.value,
+      resourceName: '',
+      resourceKey: '',
+    })),
+    ...secrets.map((e) => ({
+      name: e.name,
+      source: 'secret' as const,
+      value: '',
+      resourceName: e.resourceName,
+      resourceKey: e.resourceKey,
+    })),
+    ...configMaps.map((e) => ({
+      name: e.name,
+      source: 'configMap' as const,
+      value: '',
+      resourceName: e.resourceName,
+      resourceKey: e.resourceKey,
+    })),
+  ];
+  return result.length > 0 ? result : undefined;
+}
+
 function useFunctionCreatePage(): {
   isSubmitting: boolean;
   error: string | null;
@@ -87,6 +119,7 @@ function useFunctionCreatePage(): {
         registry: data.registry,
         namespace: data.namespace,
         branch: data.branch,
+        envVars: toEnvVars(data.plainEnvVars, data.secretEnvVars, data.configMapEnvVars),
       });
 
       const repo = { owner: data.owner, name: data.repo, url: '', defaultBranch: data.branch };
