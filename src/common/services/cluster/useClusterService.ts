@@ -1,6 +1,8 @@
 import { K8sResourceKind, useK8sWatchResource } from '@openshift-console/dynamic-plugin-sdk';
 import { useMemo } from 'react';
 import { K8sKeyedResource } from '../types';
+import { ClusterFunction } from './ClusterFunction';
+import { listKnativeClusterFunctions } from './ClusterFunctionKnative';
 import { OcpClusterService } from './OcpClusterService';
 
 const instance = new OcpClusterService();
@@ -8,6 +10,7 @@ const instance = new OcpClusterService();
 const FUNCTION_NAME_LABEL = 'function.knative.dev/name';
 
 interface ClusterService {
+  functions: Map<string, ClusterFunction>;
   knativeServices: K8sResourceKind[];
   deployments: K8sResourceKind[];
   secrets: K8sKeyedResource[];
@@ -103,9 +106,18 @@ export function useClusterService(
     [rawConfigMaps, cmLoaded],
   );
 
+  const knativeServices = useMemo(() => (knLoaded ? (knSvcs ?? []) : []), [knLoaded, knSvcs]);
+  const deploymentList = useMemo(() => (depLoaded ? (deps ?? []) : []), [depLoaded, deps]);
+
+  const functions = useMemo(() => {
+    const list = listKnativeClusterFunctions(knativeServices, deploymentList);
+    return new Map(list.map((cf) => [cf.name, cf]));
+  }, [knativeServices, deploymentList]);
+
   return {
-    knativeServices: knLoaded ? (knSvcs ?? []) : [],
-    deployments: depLoaded ? (deps ?? []) : [],
+    functions,
+    knativeServices,
+    deployments: deploymentList,
     secrets,
     configMaps,
     loaded: knLoaded && depLoaded && secretLoaded && cmLoaded,

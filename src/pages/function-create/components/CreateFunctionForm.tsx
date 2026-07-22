@@ -64,13 +64,7 @@ interface CreateFunctionFormProps {
 
 export function CreateFunctionForm({ onSubmit, onCancel, isSubmitting }: CreateFunctionFormProps) {
   const { t } = useTranslation('plugin__console-functions-plugin');
-  const {
-    fields,
-    setField,
-    setEnvVars,
-    setEnvVarsValid,
-    isValid,
-  } = useCreateFunctionForm();
+  const { fields, setField, setEnvVars, setEnvVarsValid, isValid } = useCreateFunctionForm();
 
   return (
     <Form
