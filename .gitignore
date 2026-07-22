@@ -51,6 +51,10 @@ install-state.gz
 # MCP
 .playwright-mcp
 
+# Demo
+/pdf-transcriber
+demo/pdf-transcriber/.env
+
 # Built binaries
 /bin
 pages/plugin.yaml
