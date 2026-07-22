@@ -23,18 +23,12 @@ No em dashes (`—`). Use commas, periods, or parentheses instead.
 
 | File | Purpose |
 |------|---------|
-| `docs/WORKFLOW.md` | Startup sequence, feature dev sequence, branching, PRs, session rules |
 | `docs/ARCHITECTURE.md` | Layered architecture, dependency rules |
 | `docs/STYLEGUIDE.md` | Code style, naming conventions |
 | `docs/TESTING.md` | Testing strategy, tools, conventions, mock patterns |
 | `docs/design/` | Design specs — "what to build" |
 | `docs/plans/active/` | Implementation plans in progress |
 | `docs/plans/completed/` | Finished plans |
-| `docs/features.json` | Inviolable feature list — see [`references/features-json-readme.md`](docs/references/features-json-readme.md) |
-| `docs/potential-features.json` | Candidate features for future implementation |
-| `docs/claude-progress.txt` | Session handoff log — see [`references/claude-progress-readme.md`](docs/references/claude-progress-readme.md) |
-| `docs/agent-struggles.json` | Struggle log — see [`references/agent-struggles-readme.md`](docs/references/agent-struggles-readme.md) |
 | `.dev-env.json` | Dev server ports (backendPort, pluginPort, consolePort), written by init.sh |
 | `.dev-logs/` | Dev server log files (backend.log, webpack.log, console.log) |
-| `docs/references/ocp-plugin-guide.md` | OCP dynamic plugin mechanics, i18n, extension points |
-| `docs/references/commit-message-guide.md` | Git commit conventions and authorship rules |
+| `docs/references/ocp-dynamic-plugin-reference.md` | OCP dynamic plugin mechanics, i18n, extension points |

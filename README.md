@@ -51,6 +51,8 @@ Available image tags are listed in the [container registry](https://github.com/f
 - An [OpenShift cluster](https://console.redhat.com/openshift/create)
 - Github [*Personal Access Token*](https://github.com/settings/personal-access-tokens) with *administration*, *content* and *workflow* write permissions in all repositories
 - [inotify-tools](https://github.com/inotify-tools/inotify-tools) (optional, enables Go backend auto-recompile on file changes)
+- [Superpowers](https://github.com/obra/superpowers) (optional, enables your coding agents to brainstorm, write plans, use tdd, etc.)
+- [Jira CLI](https://github.com/ankitpokhrel/jira-cli/wiki/Installation) (optional, enables your coding agent to read Jira tickets)
 
 ### Setup
 
