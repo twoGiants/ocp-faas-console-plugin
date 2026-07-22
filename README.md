@@ -4,7 +4,41 @@ A Functions-as-a-Service PoC UI for the OpenShift Web Console. Developers create
 
 Built as an [OpenShift Console dynamic plugin](https://github.com/openshift/console/tree/main/frontend/packages/console-dynamic-plugin-sdk) using React, TypeScript, and PatternFly 6.
 
-Check out the **[Github page](https://functions-dev.github.io/ocp-console-plugin/)** for a quick start or read ahead.
+Check out the **[Github page](https://github.com/openshift/faas-console-plugin)** for a quick start or read ahead.
+
+## Team Values
+
+- Support each other and find time for each other
+- Deliver high quality output
+- Communicate often and speak freely without hesitation
+- Care about bringing value to the customer
+
+## Guides
+
+| Guide | Description |
+|-------|-------------|
+| [Agile Workflow](docs/AGILE.md) | Issue tracking, branching, pull requests |
+| [Architecture](docs/ARCHITECTURE.md) | Layered architecture, dependency rules, and React patterns |
+| [Style Guide](docs/STYLEGUIDE.md) | Code style, naming conventions, commit conventions, CSS rules, and OCP plugin constraints |
+| [Testing](docs/TESTING.md) | TDD approach, test layers, mock strategy, and file conventions |
+
+### Templates
+
+| Template | Description |
+|----------|-------------|
+| [PR Template](.github/pull_request_template.md) | Pull request description format |
+| [Jira Epic](docs/templates/jira-epic-template.md) | Template for creating Jira epics |
+| [Jira Story](docs/templates/jira-story-template.md) | Template for creating Jira stories |
+
+### Slash Commands
+
+| Command | Description |
+|---------|-------------|
+| `/begin` | Start a session, orient, and pick work |
+| `/commit` | Create a git commit |
+| `/create-pr` | Run pre-checks, review, and create a PR |
+| `/e2e` | Scaffold and debug Playwright e2e tests |
+| `/scrutinise` | Critically review your own output |
 
 ## Deployment on cluster
 
@@ -50,6 +84,7 @@ Available image tags are listed in the [container registry](https://github.com/f
 - [Docker](https://www.docker.com) or [podman 3.2.0+](https://podman.io)
 - An [OpenShift cluster](https://console.redhat.com/openshift/create)
 - Github [*Personal Access Token*](https://github.com/settings/personal-access-tokens) with *administration*, *content* and *workflow* write permissions in all repositories
+- [gh](https://cli.github.com/) CLI (optional, enables your agent to create/update PRs)
 - [inotify-tools](https://github.com/inotify-tools/inotify-tools) (optional, enables Go backend auto-recompile on file changes)
 - [Superpowers](https://github.com/obra/superpowers) (optional, enables your coding agents to brainstorm, write plans, use tdd, etc.)
 - [Jira CLI](https://github.com/ankitpokhrel/jira-cli/wiki/Installation) (optional, enables your coding agent to read Jira tickets)
@@ -170,14 +205,6 @@ overwriting default console styles, breaking the layout of existing pages. The
 best practice is to prefix your CSS class names with your plugin name to avoid
 conflicts. Please don't disable these rules without understanding how they can
 break console styles!
-
-## Reporting
-
-Steps to generate reports
-
-1. In command prompt, navigate to root folder and execute the command `yarn run cypress-merge`
-2. Then execute command `yarn run cypress-generate`
-The cypress-report.html file is generated and should be in (/integration-tests/screenshots) directory.
 
 ## References
 
