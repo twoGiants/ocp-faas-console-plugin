@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../../testing/msw/server';
@@ -260,9 +260,8 @@ describe('FunctionCreatePage', () => {
     sessionStorage.setItem(PAT_KEY, 'ghp_test');
     sessionStorage.setItem(USER_KEY, JSON.stringify({ name: 'testuser' }));
     const user = userEvent.setup();
-
     let capturedRequest: Record<string, unknown> | null = null;
-
+    setupCreateFlowHandlers();
     server.use(
       http.post(`${BACKEND_API}/api/function/create`, async ({ request }) => {
         capturedRequest = (await request.json()) as Record<string, unknown>;
@@ -270,89 +269,21 @@ describe('FunctionCreatePage', () => {
           { path: 'func.yaml', mode: '100644', content: 'name: my-func', type: 'blob' },
         ]);
       }),
-
-      http.get(`${BACKEND_API}/api/cluster/ca`, () => HttpResponse.json({ ca: 'dGVzdC1jYQ==' })),
-
-      http.get(`${GITHUB_API}/repos/testuser/my-repo`, () =>
-        HttpResponse.json({ message: 'Not Found' }, { status: 404 }),
-      ),
-
-      http.post(`${GITHUB_API}/user/repos`, () =>
-        HttpResponse.json({
-          name: 'my-repo',
-          owner: { login: 'testuser' },
-          default_branch: 'main',
-        }),
-      ),
-
-      http.get(`${GITHUB_API}/repos/testuser/my-repo/actions/secrets/public-key`, () =>
-        HttpResponse.json({ key_id: 'key-1', key: btoa('x'.repeat(32)) }),
-      ),
-
-      http.put(
-        `${GITHUB_API}/repos/testuser/my-repo/actions/secrets/:name`,
-        () => new HttpResponse(null, { status: 204 }),
-      ),
-
-      http.put(`${GITHUB_API}/repos/testuser/my-repo/topics`, () =>
-        HttpResponse.json({ names: ['serverless-function'] }),
-      ),
-
-      http.post(`${GITHUB_API}/repos/testuser/my-repo/git/blobs`, () =>
-        HttpResponse.json({ sha: 'blob-sha' }),
-      ),
-
-      http.get(`${GITHUB_API}/repos/testuser/my-repo/git/ref/:ref+`, () =>
-        HttpResponse.json({ object: { sha: 'head-sha' } }),
-      ),
-
-      http.get(`${GITHUB_API}/repos/testuser/my-repo/git/commits/:sha`, () =>
-        HttpResponse.json({ sha: 'head-sha', tree: { sha: 'parent-tree-sha' } }),
-      ),
-
-      http.post(`${GITHUB_API}/repos/testuser/my-repo/git/trees`, () =>
-        HttpResponse.json({ sha: 'tree-sha' }),
-      ),
-
-      http.post(`${GITHUB_API}/repos/testuser/my-repo/git/commits`, () =>
-        HttpResponse.json({ sha: 'commit-sha' }),
-      ),
-
-      http.patch(`${GITHUB_API}/repos/testuser/my-repo/git/refs/:ref+`, () =>
-        HttpResponse.json({}),
-      ),
-
-      http.post(`${K8S_API}/api/v1/namespaces/:ns/serviceaccounts`, () => HttpResponse.json({})),
-
-      http.post(`${K8S_API}/apis/rbac.authorization.k8s.io/v1/namespaces/:ns/roles`, () =>
-        HttpResponse.json({}),
-      ),
-
-      http.post(`${K8S_API}/apis/rbac.authorization.k8s.io/v1/namespaces/:ns/rolebindings`, () =>
-        HttpResponse.json({}),
-      ),
-
-      http.post(`${K8S_API}/api/v1/namespaces/:ns/serviceaccounts/func-github/token`, () =>
-        HttpResponse.json({ status: { token: 'sa-token-value' } }),
-      ),
     );
 
     renderPage();
-
     await fillForm(user);
-
     await user.click(screen.getByRole('button', { name: /Add environment variable/ }));
 
-    const nameInput = document.getElementById('env-name-0');
-    const valueInput = document.getElementById('env-value-0');
+    const envSection = screen.getByRole('group', { name: /Environment Variables/ });
+    const nameInput = within(envSection).getAllByRole('textbox', { name: /^Name$/ })[0];
+    const valueInput = within(envSection).getByRole('textbox', { name: /^Value$/ });
 
-    if (!nameInput || !valueInput) {
-      throw new Error('Environment variable inputs not found');
-    }
+    expect(nameInput).toBeInTheDocument();
+    expect(valueInput).toBeInTheDocument();
 
     await user.type(nameInput, 'MY_VAR');
     await user.type(valueInput, 'my-value');
-
     await user.click(screen.getByRole('button', { name: /Create/ }));
 
     await waitFor(() => {
@@ -360,10 +291,8 @@ describe('FunctionCreatePage', () => {
     });
 
     expect(capturedRequest).toBeTruthy();
-    const envVars = capturedRequest!.envVars as Array<Record<string, string>>;
-    expect(envVars).toHaveLength(1);
-    expect(envVars[0].name).toBe('MY_VAR');
-    expect(envVars[0].value).toBe('my-value');
-    expect(envVars[0].source).toBe('value');
+    expect(capturedRequest!.envVars).toEqual([
+      { name: 'MY_VAR', source: 'value', value: 'my-value', resourceName: '', resourceKey: '' },
+    ]);
   });
 });

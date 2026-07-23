@@ -12,7 +12,7 @@ import {
 import { useClusterService } from '../../common/services/cluster/useClusterService';
 import { useFunctionService } from '../../common/services/function/useFunctionService';
 import { useSourceControlService } from '../../common/services/source-control/useSourceControlService';
-import { EnvVar, PlainEnvVar, ResourceEnvVar } from '../../common/services/types';
+import { EnvVar, K8sKeyedResource, PlainEnvVar, ResourceEnvVar } from '../../common/services/types';
 import { errorMessage } from '../../common/utils/utils';
 
 export default function FunctionCreatePage() {
@@ -25,8 +25,15 @@ export default function FunctionCreatePage() {
 
 function FunctionCreatePageContent() {
   const { t } = useTranslation('plugin__console-functions-plugin');
-  const { isSubmitting, error, handleSubmit, handleCancel, isConnectedToForge } =
-    useFunctionCreatePage();
+  const {
+    isSubmitting,
+    error,
+    handleSubmit,
+    handleCancel,
+    isConnectedToForge,
+    secrets,
+    configMaps,
+  } = useFunctionCreatePage();
 
   return (
     <>
@@ -51,6 +58,8 @@ function FunctionCreatePageContent() {
         )}
         {isConnectedToForge && (
           <CreateFunctionForm
+            secrets={secrets}
+            configMaps={configMaps}
             onSubmit={handleSubmit}
             onCancel={handleCancel}
             isSubmitting={isSubmitting}
@@ -61,49 +70,20 @@ function FunctionCreatePageContent() {
   );
 }
 
-function toEnvVars(
-  plain: PlainEnvVar[],
-  secrets: ResourceEnvVar[],
-  configMaps: ResourceEnvVar[],
-): EnvVar[] | undefined {
-  const result = [
-    ...plain.map((e) => ({
-      name: e.name,
-      source: 'value' as const,
-      value: e.value,
-      resourceName: '',
-      resourceKey: '',
-    })),
-    ...secrets.map((e) => ({
-      name: e.name,
-      source: 'secret' as const,
-      value: '',
-      resourceName: e.resourceName,
-      resourceKey: e.resourceKey,
-    })),
-    ...configMaps.map((e) => ({
-      name: e.name,
-      source: 'configMap' as const,
-      value: '',
-      resourceName: e.resourceName,
-      resourceKey: e.resourceKey,
-    })),
-  ];
-  return result.length > 0 ? result : undefined;
-}
-
 function useFunctionCreatePage(): {
+  secrets: K8sKeyedResource[];
+  configMaps: K8sKeyedResource[];
   isSubmitting: boolean;
+  isConnectedToForge: boolean;
   error: string | null;
   handleSubmit: (data: CreateFunctionFormData) => Promise<void>;
   handleCancel: () => void;
-  isConnectedToForge: boolean;
 } {
   const navigate = useNavigate();
   const isConnectedToForge = useContext(ForgeConnectionContext).isActive;
   const functionService = useFunctionService();
   const sourceControl = useSourceControlService();
-  const { generateKubeconfig } = useClusterService();
+  const { secrets, configMaps, generateKubeconfig } = useClusterService();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -142,5 +122,44 @@ function useFunctionCreatePage(): {
     navigate('/faas');
   };
 
-  return { isSubmitting, error, handleSubmit, handleCancel, isConnectedToForge };
+  return {
+    isSubmitting,
+    error,
+    handleSubmit,
+    handleCancel,
+    isConnectedToForge,
+    secrets,
+    configMaps,
+  };
+}
+
+function toEnvVars(
+  plain: PlainEnvVar[],
+  secrets: ResourceEnvVar[],
+  configMaps: ResourceEnvVar[],
+): EnvVar[] | undefined {
+  const result = [
+    ...plain.map((e) => ({
+      name: e.name,
+      source: 'value' as const,
+      value: e.value,
+      resourceName: '',
+      resourceKey: '',
+    })),
+    ...secrets.map((e) => ({
+      name: e.name,
+      source: 'secret' as const,
+      value: '',
+      resourceName: e.resourceName,
+      resourceKey: e.resourceKey,
+    })),
+    ...configMaps.map((e) => ({
+      name: e.name,
+      source: 'configMap' as const,
+      value: '',
+      resourceName: e.resourceName,
+      resourceKey: e.resourceKey,
+    })),
+  ];
+  return result.length > 0 ? result : undefined;
 }

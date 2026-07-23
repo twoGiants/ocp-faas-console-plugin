@@ -57,12 +57,20 @@ export interface CreateFunctionFormData {
 type EnvVarField = 'plainEnvVars' | 'secretEnvVars' | 'configMapEnvVars';
 
 interface CreateFunctionFormProps {
+  secrets: K8sKeyedResource[];
+  configMaps: K8sKeyedResource[];
+  isSubmitting: boolean;
   onSubmit: (data: CreateFunctionFormData) => void;
   onCancel: () => void;
-  isSubmitting: boolean;
 }
 
-export function CreateFunctionForm({ onSubmit, onCancel, isSubmitting }: CreateFunctionFormProps) {
+export function CreateFunctionForm({
+  secrets,
+  configMaps,
+  onSubmit,
+  onCancel,
+  isSubmitting,
+}: CreateFunctionFormProps) {
   const { t } = useTranslation('plugin__console-functions-plugin');
   const { fields, setField, setEnvVars, setEnvVarsValid, isValid } = useCreateFunctionForm();
 
@@ -128,6 +136,8 @@ export function CreateFunctionForm({ onSubmit, onCancel, isSubmitting }: CreateF
         </FormGroup>
       </FormSection>
       <EnvVarSection
+        secrets={secrets}
+        configMaps={configMaps}
         plainEnvVars={fields.plainEnvVars}
         secretEnvVars={fields.secretEnvVars}
         configMapEnvVars={fields.configMapEnvVars}
@@ -201,75 +211,12 @@ function useCreateFunctionForm() {
   };
 }
 
-const ENV_VAR_NAME_REGEX = /^[-._a-zA-Z][-._a-zA-Z0-9]*$/;
-
-export function validateEnvVarName(name: string): string | null {
-  if (!name) return 'Name is required';
-  if (!ENV_VAR_NAME_REGEX.test(name)) {
-    return 'Must start with a letter, dot, dash, or underscore, followed by letters, digits, dots, dashes, or underscores';
-  }
-  return null;
-}
-
-export function findDuplicateEnvVarNames(names: string[]): Set<string> {
-  const seen = new Set<string>();
-  const duplicates = new Set<string>();
-  for (const name of names) {
-    if (!name) continue;
-    if (seen.has(name)) duplicates.add(name);
-    seen.add(name);
-  }
-  return duplicates;
-}
-
-function useEnvVarSection(
-  plainEnvVars: PlainEnvVar[],
-  secretEnvVars: ResourceEnvVar[],
-  configMapEnvVars: ResourceEnvVar[],
-  onValidChange: (valid: boolean) => void,
-) {
-  const allNames = [
-    ...plainEnvVars.map((e) => e.name),
-    ...secretEnvVars.map((e) => e.name),
-    ...configMapEnvVars.map((e) => e.name),
-  ];
-  const duplicates = findDuplicateEnvVarNames(allNames);
-
-  const getNameError = (name: string): string | null => {
-    if (duplicates.has(name)) return 'Duplicate name';
-    if (name) return validateEnvVarName(name);
-    return null;
-  };
-
-  const isValid = (() => {
-    const allEnvVars = [...plainEnvVars, ...secretEnvVars, ...configMapEnvVars];
-    if (allEnvVars.length === 0) return true;
-    if (duplicates.size > 0) return false;
-
-    const plainValid = plainEnvVars.every(
-      (e) => e.name && validateEnvVarName(e.name) === null && e.value.trim() !== '',
-    );
-    const resourceValid = [...secretEnvVars, ...configMapEnvVars].every(
-      (e) =>
-        e.name &&
-        validateEnvVarName(e.name) === null &&
-        e.resourceName.trim() !== '' &&
-        e.resourceKey.trim() !== '',
-    );
-    return plainValid && resourceValid;
-  })();
-
-  useEffect(() => {
-    onValidChange(isValid);
-  }, [isValid, onValidChange]);
-
-  return { getNameError };
-}
-
 interface EnvVarSectionProps {
   plainEnvVars: PlainEnvVar[];
   secretEnvVars: ResourceEnvVar[];
   configMapEnvVars: ResourceEnvVar[];
+  secrets: K8sKeyedResource[];
+  configMaps: K8sKeyedResource[];
   namespace: string;
   onEnvVarChange: (field: EnvVarField, vars: PlainEnvVar[] | ResourceEnvVar[]) => void;
   onValidChange: (valid: boolean) => void;
@@ -279,30 +226,22 @@ export function EnvVarSection({
   plainEnvVars,
   secretEnvVars,
   configMapEnvVars,
+  secrets,
+  configMaps,
   namespace,
   onEnvVarChange,
   onValidChange,
 }: EnvVarSectionProps) {
   const { t } = useTranslation('plugin__console-functions-plugin');
-  const [expanded, setExpanded] = useState(false);
-  const { secrets, configMaps } = useClusterService([], namespace);
-  const { getNameError } = useEnvVarSection(
-    plainEnvVars,
-    secretEnvVars,
-    configMapEnvVars,
-    onValidChange,
-  );
-
-  const plainNameErrors = plainEnvVars.map((e) => getNameError(e.name));
-  const secretNameErrors = secretEnvVars.map((e) => getNameError(e.name));
-  const configMapNameErrors = configMapEnvVars.map((e) => getNameError(e.name));
+  const { expanded, expand, close, plainNameErrors, secretNameErrors, configMapNameErrors } =
+    useEnvVarSection(plainEnvVars, secretEnvVars, configMapEnvVars, onValidChange);
 
   return (
     <FormSection title={t('Environment Variables')}>
       {!expanded ? (
         <Flex>
           <FlexItem>
-            <Button variant="link" icon={<PlusCircleIcon />} onClick={() => setExpanded(true)}>
+            <Button variant="link" icon={<PlusCircleIcon />} onClick={() => expand()}>
               {t('Add environment variable')}
             </Button>
           </FlexItem>
@@ -354,7 +293,7 @@ export function EnvVarSection({
                         onEnvVarChange('plainEnvVars', []);
                         onEnvVarChange('secretEnvVars', []);
                         onEnvVarChange('configMapEnvVars', []);
-                        setExpanded(false);
+                        close();
                       }}
                     >
                       {t('Remove environment variables')}
@@ -370,42 +309,81 @@ export function EnvVarSection({
   );
 }
 
-function useEnvVarList<T extends object>(items: T[], empty: T, onChange: (items: T[]) => void) {
-  const [keys, setKeys] = useState<number[]>(() => items.map((_, i) => i));
+function useEnvVarSection(
+  plainEnvVars: PlainEnvVar[],
+  secretEnvVars: ResourceEnvVar[],
+  configMapEnvVars: ResourceEnvVar[],
+  onValidChange: (valid: boolean) => void,
+) {
+  const [expanded, setExpanded] = useState(false);
+  const expand = () => setExpanded(true);
+  const close = () => setExpanded(false);
 
-  const rows = items.length > 0 ? items : [empty];
+  const plainNames = plainEnvVars.map((e) => e.name);
+  const secretNames = secretEnvVars.map((e) => e.name);
+  const configMapNames = configMapEnvVars.map((e) => e.name);
+  const duplicates = findDuplicateEnvVarNames([...plainNames, ...secretNames, ...configMapNames]);
 
-  const handleAdd = () => {
-    if (items.length === 0) {
-      onChange([{ ...empty }, { ...empty }]);
-      setKeys([0, 1]);
-      return;
-    }
-    onChange([...items, { ...empty }]);
-    setKeys((prev) => [...prev, Math.max(0, ...prev) + 1]);
+  const isValid = (() => {
+    const allEnvVars = [...plainEnvVars, ...secretEnvVars, ...configMapEnvVars];
+    if (allEnvVars.length === 0) return true;
+    if (duplicates.size > 0) return false;
+
+    const plainValid = plainEnvVars.every(
+      (e) => e.name && validateEnvVarName(e.name) === null && e.value.trim() !== '',
+    );
+    const resourceValid = [...secretEnvVars, ...configMapEnvVars].every(
+      (e) =>
+        e.name &&
+        validateEnvVarName(e.name) === null &&
+        e.resourceName.trim() !== '' &&
+        e.resourceKey.trim() !== '',
+    );
+    return plainValid && resourceValid;
+  })();
+
+  useEffect(() => {
+    onValidChange(isValid);
+  }, [isValid, onValidChange]);
+
+  return {
+    expanded,
+    expand,
+    close,
+    plainNameErrors: getNameError(plainNames, duplicates),
+    secretNameErrors: getNameError(secretNames, duplicates),
+    configMapNameErrors: getNameError(configMapNames, duplicates),
   };
-
-  const handleChange = (index: number, updated: T) => {
-    if (items.length === 0) {
-      onChange([updated]);
-      setKeys([0]);
-      return;
-    }
-    const next = [...items];
-    next[index] = updated;
-    onChange(next);
-  };
-
-  const handleRemove = (index: number) => {
-    onChange(items.filter((_, i) => i !== index));
-    setKeys((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  return { rows, keys, handleAdd, handleChange, handleRemove };
 }
 
-const emptyPlainEnvVar: PlainEnvVar = { name: '', value: '' };
-const emptyResourceEnvVar: ResourceEnvVar = { name: '', resourceName: '', resourceKey: '' };
+function validateEnvVarName(name: string): string | null {
+  const ENV_VAR_NAME_REGEX = /^[-._a-zA-Z][-._a-zA-Z0-9]*$/;
+
+  if (!name) return 'Name is required';
+  if (!ENV_VAR_NAME_REGEX.test(name)) {
+    return 'Must start with a letter, dot, dash, or underscore, followed by letters, digits, dots, dashes, or underscores';
+  }
+  return null;
+}
+
+function findDuplicateEnvVarNames(names: string[]): Set<string> {
+  const seen = new Set<string>();
+  const duplicates = new Set<string>();
+  for (const name of names) {
+    if (!name) continue;
+    if (seen.has(name)) duplicates.add(name);
+    seen.add(name);
+  }
+  return duplicates;
+}
+
+function getNameError(names: string[], duplicates: Set<string>) {
+  return names.map((name) => {
+    if (duplicates.has(name)) return 'Duplicate name';
+    if (name) return validateEnvVarName(name);
+    return null;
+  });
+}
 
 interface PlainEnvVarGroupProps {
   envVars: PlainEnvVar[];
@@ -417,7 +395,7 @@ function PlainEnvVarGroup({ envVars, nameErrors, onChange }: PlainEnvVarGroupPro
   const { t } = useTranslation('plugin__console-functions-plugin');
   const { rows, keys, handleAdd, handleChange, handleRemove } = useEnvVarList(
     envVars,
-    emptyPlainEnvVar,
+    { name: '', value: '' },
     onChange,
   );
 
@@ -456,6 +434,40 @@ function PlainEnvVarGroup({ envVars, nameErrors, onChange }: PlainEnvVarGroupPro
       </StackItem>
     </Stack>
   );
+}
+
+function useEnvVarList<T extends object>(items: T[], empty: T, onChange: (items: T[]) => void) {
+  const [keys, setKeys] = useState<number[]>(() => items.map((_, i) => i));
+
+  const rows = items.length > 0 ? items : [empty];
+
+  const handleAdd = () => {
+    if (items.length === 0) {
+      onChange([{ ...empty }, { ...empty }]);
+      setKeys([0, 1]);
+      return;
+    }
+    onChange([...items, { ...empty }]);
+    setKeys((prev) => [...prev, Math.max(0, ...prev) + 1]);
+  };
+
+  const handleChange = (index: number, updated: T) => {
+    if (items.length === 0) {
+      onChange([updated]);
+      setKeys([0]);
+      return;
+    }
+    const next = [...items];
+    next[index] = updated;
+    onChange(next);
+  };
+
+  const handleRemove = (index: number) => {
+    onChange(items.filter((_, i) => i !== index));
+    setKeys((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  return { rows, keys, handleAdd, handleChange, handleRemove };
 }
 
 interface PlainEnvVarRowProps {
@@ -528,7 +540,7 @@ function ResourceEnvVarGroup({
   const { t } = useTranslation('plugin__console-functions-plugin');
   const { rows, keys, handleAdd, handleChange, handleRemove } = useEnvVarList(
     envVars,
-    emptyResourceEnvVar,
+    { name: '', resourceName: '', resourceKey: '' },
     onChange,
   );
 
@@ -589,11 +601,6 @@ interface ResourceEnvVarRowProps {
   idPrefix: string;
 }
 
-function useResourceKeys(resources: K8sKeyedResource[], resourceName: string) {
-  const selectedResource = resources.find((r) => r.name === resourceName);
-  return selectedResource?.keys ?? [];
-}
-
 function ResourceEnvVarRow({
   envVar,
   index,
@@ -605,7 +612,7 @@ function ResourceEnvVarRow({
   idPrefix,
 }: ResourceEnvVarRowProps) {
   const { t } = useTranslation('plugin__console-functions-plugin');
-  const resourceKeys = useResourceKeys(resources, envVar.resourceName);
+  const resourceKeys = resources.find((r) => r.name === envVar.resourceName)?.keys ?? [];
 
   return (
     <Flex gap={{ default: 'gapMd' }}>

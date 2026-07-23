@@ -20,16 +20,6 @@ interface ClusterService {
   generateKubeconfig: (namespace: string) => Promise<string>;
 }
 
-function toKeyedResources(resources: K8sResourceKind[], loaded: boolean): K8sKeyedResource[] {
-  if (!loaded) return [];
-  return (resources ?? [])
-    .filter((r) => r.metadata?.name)
-    .map((r) => ({
-      name: r.metadata!.name!,
-      keys: r.data ? Object.keys(r.data) : [],
-    }));
-}
-
 export function useClusterService(
   functionNames: string[] = [],
   namespace?: string,
@@ -97,14 +87,8 @@ export function useClusterService(
   const [rawConfigMaps, cmLoaded, cmError] =
     useK8sWatchResource<K8sResourceKind[]>(configMapConfig);
 
-  const secrets = useMemo(
-    () => toKeyedResources(rawSecrets, secretLoaded),
-    [rawSecrets, secretLoaded],
-  );
-  const configMaps = useMemo(
-    () => toKeyedResources(rawConfigMaps, cmLoaded),
-    [rawConfigMaps, cmLoaded],
-  );
+  const secrets = useMemo(() => toKeyedResources(rawSecrets), [rawSecrets, secretLoaded]);
+  const configMaps = useMemo(() => toKeyedResources(rawConfigMaps), [rawConfigMaps, cmLoaded]);
 
   const knativeServices = useMemo(() => (knLoaded ? (knSvcs ?? []) : []), [knLoaded, knSvcs]);
   const deploymentList = useMemo(() => (depLoaded ? (deps ?? []) : []), [depLoaded, deps]);
@@ -114,14 +98,26 @@ export function useClusterService(
     return new Map(list.map((cf) => [cf.name, cf]));
   }, [knativeServices, deploymentList]);
 
+  let loaded = knLoaded && depLoaded;
+  if (namespace) loaded = loaded && secretLoaded && cmLoaded;
+
   return {
     functions,
     knativeServices,
     deployments: deploymentList,
     secrets,
     configMaps,
-    loaded: knLoaded && depLoaded && secretLoaded && cmLoaded,
+    loaded,
     error: knError || depError || secretError || cmError,
     generateKubeconfig: instance.generateKubeconfig.bind(instance),
   };
+}
+
+function toKeyedResources(resources: K8sResourceKind[]): K8sKeyedResource[] {
+  return (resources ?? [])
+    .filter((r) => r.metadata?.name)
+    .map((r) => ({
+      name: r.metadata!.name!,
+      keys: r.data ? Object.keys(r.data) : [],
+    }));
 }

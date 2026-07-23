@@ -1,12 +1,8 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import {
-  CreateFunctionForm,
-  validateEnvVarName,
-  findDuplicateEnvVarNames,
-} from './CreateFunctionForm';
+import { CreateFunctionForm } from './CreateFunctionForm';
 import { ForgeConnectionContext } from '../../../common/context/ForgeConnectionProvider';
-import { ForgeUser } from '../../../common/services/types';
+import { ForgeUser, K8sKeyedResource } from '../../../common/services/types';
 
 const testUser: ForgeUser = { name: 'testuser' };
 const forgeContext = {
@@ -26,69 +22,27 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-vi.mock('@openshift-console/dynamic-plugin-sdk', () => ({
-  useK8sWatchResource: () => [[], true, null],
-}));
-
-describe('validateEnvVarName', () => {
-  it('returns null for a valid name', () => {
-    expect(validateEnvVarName('API_KEY')).toBeNull();
-  });
-
-  it('returns null for names with dots, dashes, and underscores', () => {
-    expect(validateEnvVarName('my.var')).toBeNull();
-    expect(validateEnvVarName('my-var')).toBeNull();
-    expect(validateEnvVarName('_PRIVATE')).toBeNull();
-    expect(validateEnvVarName('.hidden')).toBeNull();
-    expect(validateEnvVarName('-flag')).toBeNull();
-  });
-
-  it('returns an error for empty name', () => {
-    expect(validateEnvVarName('')).toBe('Name is required');
-  });
-
-  it('returns an error for names starting with a digit', () => {
-    expect(validateEnvVarName('1BAD')).toBe(
-      'Must start with a letter, dot, dash, or underscore, followed by letters, digits, dots, dashes, or underscores',
-    );
-  });
-
-  it('returns an error for names with invalid characters', () => {
-    expect(validateEnvVarName('NO SPACES')).toBe(
-      'Must start with a letter, dot, dash, or underscore, followed by letters, digits, dots, dashes, or underscores',
-    );
-    expect(validateEnvVarName('bad!')).toBe(
-      'Must start with a letter, dot, dash, or underscore, followed by letters, digits, dots, dashes, or underscores',
-    );
-  });
-});
-
-describe('findDuplicateEnvVarNames', () => {
-  it('returns empty set when no duplicates', () => {
-    expect(findDuplicateEnvVarNames(['A', 'B', 'C'])).toEqual(new Set());
-  });
-
-  it('returns duplicate names', () => {
-    expect(findDuplicateEnvVarNames(['A', 'B', 'A'])).toEqual(new Set(['A']));
-  });
-
-  it('ignores empty names', () => {
-    expect(findDuplicateEnvVarNames(['', '', 'A'])).toEqual(new Set());
-  });
-});
+const emptySecrets: K8sKeyedResource[] = [];
+const emptyConfigMaps: K8sKeyedResource[] = [];
 
 describe('CreateFunctionForm', () => {
   const onSubmit = vi.fn();
   const onCancel = vi.fn();
+
+  const defaultProps = {
+    onSubmit,
+    onCancel,
+    isSubmitting: false,
+    secrets: emptySecrets,
+    configMaps: emptyConfigMaps,
+  };
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
   it('renders all form fields', () => {
-    renderWithContext(
-      <CreateFunctionForm onSubmit={onSubmit} onCancel={onCancel} isSubmitting={false} />,
-    );
+    renderWithContext(<CreateFunctionForm {...defaultProps} />);
 
     expect(screen.getByRole('textbox', { name: /Owner/ })).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: /Repository/ })).toBeInTheDocument();
@@ -100,9 +54,7 @@ describe('CreateFunctionForm', () => {
   });
 
   it('presets owner from context and disables the field', () => {
-    renderWithContext(
-      <CreateFunctionForm onSubmit={onSubmit} onCancel={onCancel} isSubmitting={false} />,
-    );
+    renderWithContext(<CreateFunctionForm {...defaultProps} />);
 
     const ownerInput = screen.getByRole('textbox', { name: /Owner/ });
     expect(ownerInput).toHaveValue('testuser');
@@ -110,9 +62,7 @@ describe('CreateFunctionForm', () => {
   });
 
   it('presets registry to OCP internal registry and disables the field', () => {
-    renderWithContext(
-      <CreateFunctionForm onSubmit={onSubmit} onCancel={onCancel} isSubmitting={false} />,
-    );
+    renderWithContext(<CreateFunctionForm {...defaultProps} />);
 
     const registryInput = screen.getByRole('textbox', { name: /Registry/ });
     expect(registryInput).toHaveValue('image-registry.openshift-image-registry.svc:5000/');
@@ -122,9 +72,7 @@ describe('CreateFunctionForm', () => {
   it('updates registry to include namespace when namespace is typed', async () => {
     const user = userEvent.setup();
 
-    renderWithContext(
-      <CreateFunctionForm onSubmit={onSubmit} onCancel={onCancel} isSubmitting={false} />,
-    );
+    renderWithContext(<CreateFunctionForm {...defaultProps} />);
 
     await user.type(screen.getByRole('textbox', { name: /Namespace/ }), 'my-ns');
 
@@ -134,26 +82,20 @@ describe('CreateFunctionForm', () => {
   });
 
   it('renders Create and Cancel buttons', () => {
-    renderWithContext(
-      <CreateFunctionForm onSubmit={onSubmit} onCancel={onCancel} isSubmitting={false} />,
-    );
+    renderWithContext(<CreateFunctionForm {...defaultProps} />);
 
     expect(screen.getByRole('button', { name: /Create/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Cancel/ })).toBeInTheDocument();
   });
 
   it('disables Create button when required fields are empty', () => {
-    renderWithContext(
-      <CreateFunctionForm onSubmit={onSubmit} onCancel={onCancel} isSubmitting={false} />,
-    );
+    renderWithContext(<CreateFunctionForm {...defaultProps} />);
 
     expect(screen.getByRole('button', { name: /Create/ })).toBeDisabled();
   });
 
   it('disables Create button when isSubmitting is true', () => {
-    renderWithContext(
-      <CreateFunctionForm onSubmit={onSubmit} onCancel={onCancel} isSubmitting={true} />,
-    );
+    renderWithContext(<CreateFunctionForm {...defaultProps} isSubmitting={true} />);
 
     expect(screen.getByRole('button', { name: /Create/ })).toBeDisabled();
   });
@@ -161,9 +103,7 @@ describe('CreateFunctionForm', () => {
   it('calls onCancel when Cancel is clicked', async () => {
     const user = userEvent.setup();
 
-    renderWithContext(
-      <CreateFunctionForm onSubmit={onSubmit} onCancel={onCancel} isSubmitting={false} />,
-    );
+    renderWithContext(<CreateFunctionForm {...defaultProps} />);
 
     await user.click(screen.getByRole('button', { name: /Cancel/ }));
     expect(onCancel).toHaveBeenCalled();
@@ -172,9 +112,7 @@ describe('CreateFunctionForm', () => {
   it('calls onSubmit with form data when form is filled and Create is clicked', async () => {
     const user = userEvent.setup();
 
-    renderWithContext(
-      <CreateFunctionForm onSubmit={onSubmit} onCancel={onCancel} isSubmitting={false} />,
-    );
+    renderWithContext(<CreateFunctionForm {...defaultProps} />);
 
     await user.type(screen.getByRole('textbox', { name: /Repository/ }), 'my-repo');
     await user.type(screen.getByRole('textbox', { name: /Branch/ }), 'main');
@@ -199,9 +137,7 @@ describe('CreateFunctionForm', () => {
 
   it('renders the Environment Variables section with empty row after expansion', async () => {
     const user = userEvent.setup();
-    const { container } = renderWithContext(
-      <CreateFunctionForm onSubmit={onSubmit} onCancel={onCancel} isSubmitting={false} />,
-    );
+    const { container } = renderWithContext(<CreateFunctionForm {...defaultProps} />);
 
     expect(screen.getByText('Environment Variables')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /Add environment variable/ }));
@@ -213,9 +149,7 @@ describe('CreateFunctionForm', () => {
 
   it('renders Secrets and ConfigMaps groups', async () => {
     const user = userEvent.setup();
-    renderWithContext(
-      <CreateFunctionForm onSubmit={onSubmit} onCancel={onCancel} isSubmitting={false} />,
-    );
+    renderWithContext(<CreateFunctionForm {...defaultProps} />);
 
     await user.click(screen.getByRole('button', { name: /Add environment variable/ }));
 
@@ -229,9 +163,7 @@ describe('CreateFunctionForm', () => {
   it('enables Create button when all required fields and valid env vars are filled', async () => {
     const user = userEvent.setup();
 
-    const { container } = renderWithContext(
-      <CreateFunctionForm onSubmit={onSubmit} onCancel={onCancel} isSubmitting={false} />,
-    );
+    const { container } = renderWithContext(<CreateFunctionForm {...defaultProps} />);
 
     await user.type(screen.getByRole('textbox', { name: /Repository/ }), 'my-repo');
     await user.type(screen.getByRole('textbox', { name: /Branch/ }), 'main');
@@ -263,9 +195,7 @@ describe('CreateFunctionForm', () => {
   it('disables Create button when env var has empty name', async () => {
     const user = userEvent.setup();
 
-    const { container } = renderWithContext(
-      <CreateFunctionForm onSubmit={onSubmit} onCancel={onCancel} isSubmitting={false} />,
-    );
+    const { container } = renderWithContext(<CreateFunctionForm {...defaultProps} />);
 
     await user.type(screen.getByRole('textbox', { name: /Repository/ }), 'my-repo');
     await user.type(screen.getByRole('textbox', { name: /Branch/ }), 'main');
@@ -286,9 +216,7 @@ describe('CreateFunctionForm', () => {
   it('removes the last env var row when Remove is clicked', async () => {
     const user = userEvent.setup();
 
-    const { container } = renderWithContext(
-      <CreateFunctionForm onSubmit={onSubmit} onCancel={onCancel} isSubmitting={false} />,
-    );
+    const { container } = renderWithContext(<CreateFunctionForm {...defaultProps} />);
 
     await user.click(screen.getByRole('button', { name: /Add environment variable/ }));
     await user.click(screen.getAllByRole('button', { name: /Add key\/value/ })[0]);
@@ -306,9 +234,7 @@ describe('CreateFunctionForm', () => {
   it('shows duplicate name error for repeated env var names', async () => {
     const user = userEvent.setup();
 
-    const { container } = renderWithContext(
-      <CreateFunctionForm onSubmit={onSubmit} onCancel={onCancel} isSubmitting={false} />,
-    );
+    const { container } = renderWithContext(<CreateFunctionForm {...defaultProps} />);
 
     await user.click(screen.getByRole('button', { name: /Add environment variable/ }));
     await user.click(screen.getAllByRole('button', { name: /Add key\/value/ })[0]);
@@ -325,9 +251,7 @@ describe('CreateFunctionForm', () => {
 
   it('renders Secret resource and key dropdowns in the secrets group', async () => {
     const user = userEvent.setup();
-    const { container } = renderWithContext(
-      <CreateFunctionForm onSubmit={onSubmit} onCancel={onCancel} isSubmitting={false} />,
-    );
+    const { container } = renderWithContext(<CreateFunctionForm {...defaultProps} />);
 
     await user.click(screen.getByRole('button', { name: /Add environment variable/ }));
 
@@ -338,14 +262,144 @@ describe('CreateFunctionForm', () => {
 
   it('renders ConfigMap resource and key dropdowns in the configmaps group', async () => {
     const user = userEvent.setup();
-    const { container } = renderWithContext(
-      <CreateFunctionForm onSubmit={onSubmit} onCancel={onCancel} isSubmitting={false} />,
-    );
+    const { container } = renderWithContext(<CreateFunctionForm {...defaultProps} />);
 
     await user.click(screen.getByRole('button', { name: /Add environment variable/ }));
 
     expect(container.querySelector('#configmap-name-0')).toBeInTheDocument();
     expect(container.querySelector('#configmap-resource-0')).toBeInTheDocument();
     expect(container.querySelector('#configmap-key-0')).toBeInTheDocument();
+  });
+
+  it('disables Create button when env var name starts with a digit', async () => {
+    const user = userEvent.setup();
+
+    renderWithContext(<CreateFunctionForm {...defaultProps} />);
+
+    await user.type(screen.getByRole('textbox', { name: /Repository/ }), 'my-repo');
+    await user.type(screen.getByRole('textbox', { name: /Branch/ }), 'main');
+    await user.type(screen.getByRole('textbox', { name: /^Name$/ }), 'my-func');
+    await user.type(screen.getByRole('textbox', { name: /Namespace/ }), 'default');
+
+    await user.click(screen.getByRole('button', { name: /Add environment variable/ }));
+
+    const envSection = screen.getByRole('group', { name: /Environment Variables/ });
+    const envNameInput = within(envSection).getAllByRole('textbox', { name: /^Name$/ })[0];
+    const envValueInput = within(envSection).getByRole('textbox', { name: /^Value$/ });
+
+    expect(envNameInput).toBeInTheDocument();
+    expect(envValueInput).toBeInTheDocument();
+
+    await user.type(envNameInput, '1BAD');
+    await user.type(envValueInput, 'some-value');
+
+    expect(screen.getByRole('button', { name: /Create/ })).toBeDisabled();
+    expect(
+      screen.getByText(
+        'Must start with a letter, dot, dash, or underscore, followed by letters, digits, dots, dashes, or underscores',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('disables Create button when env var name contains invalid characters', async () => {
+    const user = userEvent.setup();
+
+    renderWithContext(<CreateFunctionForm {...defaultProps} />);
+
+    await user.type(screen.getByRole('textbox', { name: /Repository/ }), 'my-repo');
+    await user.type(screen.getByRole('textbox', { name: /Branch/ }), 'main');
+    await user.type(screen.getByRole('textbox', { name: /^Name$/ }), 'my-func');
+    await user.type(screen.getByRole('textbox', { name: /Namespace/ }), 'default');
+
+    await user.click(screen.getByRole('button', { name: /Add environment variable/ }));
+
+    const envSection = screen.getByRole('group', { name: /Environment Variables/ });
+    const envNameInput = within(envSection).getAllByRole('textbox', { name: /^Name$/ })[0];
+    const envValueInput = within(envSection).getByRole('textbox', { name: /^Value$/ });
+
+    expect(envNameInput).toBeInTheDocument();
+    expect(envValueInput).toBeInTheDocument();
+
+    await user.type(envNameInput, 'NO SPACES');
+    await user.type(envValueInput, 'some-value');
+
+    expect(screen.getByRole('button', { name: /Create/ })).toBeDisabled();
+  });
+
+  it('enables Create button when env var name uses dots, dashes, or underscores', async () => {
+    const user = userEvent.setup();
+
+    renderWithContext(<CreateFunctionForm {...defaultProps} />);
+
+    await user.type(screen.getByRole('textbox', { name: /Repository/ }), 'my-repo');
+    await user.type(screen.getByRole('textbox', { name: /Branch/ }), 'main');
+    await user.type(screen.getByRole('textbox', { name: /^Name$/ }), 'my-func');
+    await user.type(screen.getByRole('textbox', { name: /Namespace/ }), 'default');
+
+    await user.click(screen.getByRole('button', { name: /Add environment variable/ }));
+
+    const envSection = screen.getByRole('group', { name: /Environment Variables/ });
+    const envNameInput = within(envSection).getAllByRole('textbox', { name: /^Name$/ })[0];
+    const envValueInput = within(envSection).getByRole('textbox', { name: /^Value$/ });
+
+    expect(envNameInput).toBeInTheDocument();
+    expect(envValueInput).toBeInTheDocument();
+
+    await user.type(envNameInput, '_my.env-var');
+    await user.type(envValueInput, 'some-value');
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Create/ })).not.toBeDisabled();
+    });
+  });
+
+  it('shows duplicate error across env var groups', async () => {
+    const user = userEvent.setup();
+
+    renderWithContext(
+      <CreateFunctionForm
+        {...defaultProps}
+        secrets={[{ name: 'my-secret', keys: ['key1'] }]}
+      />,
+    );
+
+    await user.type(screen.getByRole('textbox', { name: /Namespace/ }), 'default');
+
+    await user.click(screen.getByRole('button', { name: /Add environment variable/ }));
+
+    const envSection = screen.getByRole('group', { name: /Environment Variables/ });
+    const plainNameInput = within(envSection).getAllByRole('textbox', { name: /^Name$/ })[0];
+    const plainValueInput = within(envSection).getByRole('textbox', { name: /^Value$/ });
+
+    expect(plainNameInput).toBeInTheDocument();
+    expect(plainValueInput).toBeInTheDocument();
+
+    await user.type(plainNameInput, 'SAME_NAME');
+    await user.type(plainValueInput, 'value');
+
+    const secretNameInputs = within(envSection).getAllByRole('textbox', { name: /^Name$/ });
+    const secretNameInput = secretNameInputs[secretNameInputs.length - 1];
+
+    expect(secretNameInput).toBeInTheDocument();
+
+    await user.type(secretNameInput, 'SAME_NAME');
+
+    expect(screen.getAllByText('Duplicate name')).toHaveLength(2);
+    expect(screen.getByRole('button', { name: /Create/ })).toBeDisabled();
+  });
+
+  it('does not flag empty names as duplicates', async () => {
+    const user = userEvent.setup();
+
+    renderWithContext(<CreateFunctionForm {...defaultProps} />);
+
+    await user.type(screen.getByRole('textbox', { name: /Repository/ }), 'my-repo');
+    await user.type(screen.getByRole('textbox', { name: /Branch/ }), 'main');
+    await user.type(screen.getByRole('textbox', { name: /^Name$/ }), 'my-func');
+    await user.type(screen.getByRole('textbox', { name: /Namespace/ }), 'default');
+
+    await user.click(screen.getByRole('button', { name: /Add environment variable/ }));
+
+    expect(screen.queryByText('Duplicate name')).not.toBeInTheDocument();
   });
 });
