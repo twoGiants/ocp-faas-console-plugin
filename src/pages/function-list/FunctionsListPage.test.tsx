@@ -101,6 +101,7 @@ function setupListHandler(
     name: string;
     namespace: string;
     runtime: string;
+    source?: string;
   }[],
 ) {
   server.use(
@@ -114,6 +115,7 @@ function setupListHandler(
           name: i.name,
           namespace: i.namespace,
           runtime: i.runtime,
+          source: i.source ?? 'repo',
         })),
       ),
     ),
@@ -128,6 +130,19 @@ function listItem(repoName: string, name?: string, namespace = 'demo', runtime =
     name: name ?? repoName,
     namespace,
     runtime,
+    source: 'repo',
+  };
+}
+
+function clusterOnlyListItem(name: string, namespace = 'demo', runtime = 'node') {
+  return {
+    owner: '',
+    repoName: '',
+    repoURL: '',
+    name,
+    namespace,
+    runtime,
+    source: 'cluster',
   };
 }
 
@@ -186,6 +201,24 @@ describe('FunctionsListPage', () => {
     );
 
     expect(await screen.findByTestId('fn-name')).toHaveTextContent('my-func');
+  });
+
+  it('shows cluster-only functions that have no discoverable repo', async () => {
+    renderAuthenticated();
+    setupListHandler([clusterOnlyListItem('cluster-only')]);
+    mockUseCluster.mockReturnValue(
+      clusterData({
+        functions: [clusterFunction('cluster-only', 'Running', 1)],
+      }),
+    );
+
+    render(
+      <MemoryRouter>
+        <FunctionsListPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByTestId('fn-name')).toHaveTextContent('cluster-only');
   });
 
   it('shows NotDeployed status for repos without cluster deployment', async () => {
