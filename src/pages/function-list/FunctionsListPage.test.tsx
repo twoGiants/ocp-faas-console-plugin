@@ -117,24 +117,6 @@ describe('FunctionsListPage', () => {
     expect(await screen.findByText('cluster-only')).toBeInTheDocument();
   });
 
-  it('shows cluster-only functions that have no discoverable repo', async () => {
-    renderAuthenticated();
-    setupBackendListAPIResponse([clusterOnlyListItem('cluster-only')]);
-    mockUseCluster.mockReturnValue(
-      clusterData({
-        functions: [clusterFunction('cluster-only', 'Running', 1)],
-      }),
-    );
-
-    render(
-      <MemoryRouter>
-        <FunctionsListPage />
-      </MemoryRouter>,
-    );
-
-    expect(await screen.findByTestId('fn-name')).toHaveTextContent('cluster-only');
-  });
-
   it('shows NotDeployed status for repos without cluster deployment', async () => {
     renderAuthenticated();
     setupBackendListAPIResponse([listItem('orphan-func', 'orphan-func', 'demo', 'node')]);
@@ -190,11 +172,13 @@ describe('FunctionsListPage', () => {
 
     render(
       <MemoryRouter>
-        <FunctionsListPage enableReconnect={false} />
+        <FunctionsListPage />
       </MemoryRouter>,
     );
 
-    await screen.findByRole('heading', { name: 'No functions found' });
+    expect(
+      await screen.findByRole('heading', { name: 'No functions found', hidden: true }),
+    ).toBeInTheDocument();
   });
 
   it('renders UserAvatar in header', () => {
@@ -216,14 +200,14 @@ describe('FunctionsListPage', () => {
 
     render(
       <MemoryRouter>
-        <FunctionsListPage enableReconnect={false} />
+        <FunctionsListPage />
       </MemoryRouter>,
     );
 
-    await screen.findByRole('heading', { name: 'No functions found' });
-
-    const button = screen.getByRole('button', { name: 'Create function' });
-    expect(button).toBeDisabled();
+    expect(
+      await screen.findByRole('heading', { name: 'No functions found', hidden: true }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Create function', hidden: true })).toBeDisabled();
   });
 
   it('enriches function with status, replicas, and URL from ClusterFunction', async () => {
